@@ -11,7 +11,7 @@
 ## Quick Install
 
 ```bash
-curl -sL https://raw.githubusercontent.com/logicdock/logicpanel/main/install.sh | sudo bash
+curl -sL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/bootstrap.sh | sudo sh
 ```
 
 That's it! The installer will guide you through the setup process.
