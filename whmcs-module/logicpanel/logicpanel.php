@@ -415,6 +415,9 @@ function logicpanel_getApiUrl(array $params): string
 /**
  * Get packages from LogicPanel API
  */
+/**
+ * Get packages from LogicPanel API
+ */
 function logicpanel_getPackages(): array
 {
     // Try to get from cache first
@@ -424,8 +427,9 @@ function logicpanel_getPackages(): array
         $cached = Capsule::table('tblconfiguration')->where('setting', $cacheKey)->first();
 
         if ($cached && isset($cached->value)) {
-            $cacheTime = strtotime($cached->updated_at ?? $cached->created_at ?? 'now');
-            if ($cacheTime > (time() - 3600)) {
+            $updatedAt = $cached->updated_at ?? $cached->created_at ?? date('Y-m-d H:i:s');
+            // Cache for 1 hour
+            if (strtotime($updatedAt) > (time() - 3600)) {
                 $packages = json_decode($cached->value, true);
                 if ($packages) {
                     return $packages;
@@ -447,22 +451,41 @@ function logicpanel_getPackages(): array
             return [];
         }
 
+        // WHMCS stores username/password encrypted in tblservers
+        $username = decrypt($server->username);
+        $password = decrypt($server->password);
+
         $params = [
             'serverhostname' => $server->hostname,
             'serverport' => $server->port,
             'serversecure' => $server->secure,
-            'serverusername' => decrypt($server->username),  // API Key
-            'serverpassword' => decrypt($server->password),  // API Secret
+            'serverusername' => $username,  // API Key
+            'serverpassword' => $password,  // API Secret
         ];
 
-        $response = logicpanel_apiCall($params, 'GET', '/api/packages');
+        // Ensure we are using correct API version
+        $response = logicpanel_apiCall($params, 'GET', '/api/v1/packages');
         $packages = $response['packages'] ?? [];
 
-        // Cache the packages
-        Capsule::table('tblconfiguration')->updateOrInsert(
-            ['setting' => $cacheKey],
-            ['value' => json_encode($packages)]
-        );
+        // Cache the packages if we got results
+        if (!empty($packages)) {
+            $now = date('Y-m-d H:i:s');
+            if ($cached) {
+                Capsule::table('tblconfiguration')
+                    ->where('setting', $cacheKey)
+                    ->update([
+                        'value' => json_encode($packages),
+                        'updated_at' => $now
+                    ]);
+            } else {
+                Capsule::table('tblconfiguration')->insert([
+                    'setting' => $cacheKey,
+                    'value' => json_encode($packages),
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ]);
+            }
+        }
 
         return $packages;
     } catch (Exception $e) {

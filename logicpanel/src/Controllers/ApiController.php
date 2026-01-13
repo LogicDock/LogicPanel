@@ -28,7 +28,9 @@ class ApiController extends BaseController
      */
     public function health(Request $request, Response $response): Response
     {
-        $dockerOk = $this->docker->ping();
+        // Docker ping causes timeout if socket permissions are not correct (chmod 666 /var/run/docker.sock)
+        // Disabling it to ensure panel speed
+        $dockerOk = false;
         $dbOk = true;
 
         try {
