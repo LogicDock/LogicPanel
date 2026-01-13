@@ -6,36 +6,53 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Try to load .env file, but don't fail if it doesn't exist
+// Load .env file
 try {
     $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
     $dotenv->load();
 } catch (Exception $e) {
-    // .env file might not exist, continue with system env vars
+    echo "Warning: Could not load .env file\n";
 }
 
-// Helper function to get environment variable from multiple sources
-function env($key, $default = null)
+// Read directly from .env file as backup
+$envFile = __DIR__ . '/../.env';
+$envVars = [];
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+            list($key, $value) = explode('=', $line, 2);
+            $envVars[trim($key)] = trim($value);
+        }
+    }
+}
+
+// Get value from multiple sources
+function getEnvValue($key, $default, $envVars)
 {
-    // Check $_ENV first (from dotenv)
+    // 1. Check $_ENV (from dotenv)
     if (isset($_ENV[$key]) && $_ENV[$key] !== '') {
         return $_ENV[$key];
     }
-    // Then check getenv (from docker/system)
-    $value = getenv($key);
-    if ($value !== false && $value !== '') {
-        return $value;
+    // 2. Check getenv (from docker/system)
+    $val = getenv($key);
+    if ($val !== false && $val !== '') {
+        return $val;
     }
-    // Finally return default
+    // 3. Check parsed env file
+    if (isset($envVars[$key]) && $envVars[$key] !== '') {
+        return $envVars[$key];
+    }
+    // 4. Return default
     return $default;
 }
 
 try {
-    $dbHost = env('DB_HOST', 'logicpanel-db');
-    $dbPort = env('DB_PORT', '3306');
-    $dbName = env('DB_DATABASE', 'logicpanel');
-    $dbUser = env('DB_USERNAME', 'logicpanel');
-    $dbPass = env('DB_PASSWORD', 'password');
+    $dbHost = getEnvValue('DB_HOST', 'logicpanel-db', $envVars);
+    $dbPort = getEnvValue('DB_PORT', '3306', $envVars);
+    $dbName = getEnvValue('DB_DATABASE', 'logicpanel', $envVars);
+    $dbUser = getEnvValue('DB_USERNAME', 'logicpanel', $envVars);
+    $dbPass = getEnvValue('DB_PASSWORD', 'password', $envVars);
 
     $pdo = new PDO(
         "mysql:host={$dbHost};port={$dbPort};dbname={$dbName}",
@@ -53,10 +70,12 @@ try {
         exit(0);
     }
 
-    // Get admin credentials from environment
-    $adminEmail = env('ADMIN_EMAIL', 'admin@localhost');
-    $adminName = env('ADMIN_NAME', 'Administrator');
-    $adminPassword = env('ADMIN_PASSWORD', 'password');
+    // Get admin credentials
+    $adminEmail = getEnvValue('ADMIN_EMAIL', 'admin@localhost', $envVars);
+    $adminName = getEnvValue('ADMIN_NAME', 'Administrator', $envVars);
+    $adminPassword = getEnvValue('ADMIN_PASSWORD', 'password', $envVars);
+
+    echo "Creating admin with email: $adminEmail\n";
 
     // Generate username from email
     $adminUsername = explode('@', $adminEmail)[0];
@@ -88,8 +107,8 @@ try {
     echo "Password: $adminPassword\n";
 
     // Create default API key for WHMCS
-    $apiKey = env('API_KEY', 'lp_' . bin2hex(random_bytes(16)));
-    $apiSecret = env('API_SECRET', bin2hex(random_bytes(32)));
+    $apiKey = getEnvValue('API_KEY', 'lp_' . bin2hex(random_bytes(16)), $envVars);
+    $apiSecret = getEnvValue('API_SECRET', bin2hex(random_bytes(32)), $envVars);
 
     $stmt = $pdo->prepare("SELECT id FROM lp_api_keys WHERE name = 'WHMCS Integration' LIMIT 1");
     $stmt->execute();

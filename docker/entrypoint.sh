@@ -18,7 +18,7 @@ while ! nc -z ${DB_HOST:-logicpanel-db} 3306 2>/dev/null; do
 done
 sleep 3
 
-# Create .env file from environment variables
+# Create .env file from environment variables (including ADMIN variables)
 echo "Creating .env file..."
 cat > /var/www/html/.env << EOF
 APP_ENV=${APP_ENV:-production}
@@ -33,10 +33,18 @@ DB_USERNAME=${DB_USERNAME:-logicpanel}
 DB_PASSWORD=${DB_PASSWORD:-password}
 DB_PREFIX=${DB_PREFIX:-lp_}
 
+ADMIN_EMAIL=${ADMIN_EMAIL:-admin@localhost}
+ADMIN_NAME=${ADMIN_NAME:-Administrator}
+ADMIN_PASSWORD=${ADMIN_PASSWORD:-password}
+
 API_KEY=${API_KEY:-lp_default}
 API_SECRET=${API_SECRET:-default}
 EOF
 chmod 644 /var/www/html/.env
+
+echo ".env file created with:"
+echo "  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@localhost}"
+echo "  ADMIN_NAME: ${ADMIN_NAME:-Administrator}"
 
 # Run database migrations/schema
 echo "Setting up database..."
