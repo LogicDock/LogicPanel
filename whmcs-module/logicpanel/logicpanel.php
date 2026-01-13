@@ -329,10 +329,20 @@ function logicpanel_TestConnection(array $params)
 function logicpanel_apiCall(array $params, string $method, string $endpoint, array $data = [])
 {
     $apiUrl = logicpanel_getApiUrl($params);
-    $apiKey = $params['serverusername'] ?? '';  // Username field = API Key
-    $apiSecret = $params['serverpassword'] ?? '';  // Password field = API Secret
+    $apiKey = $params['serverusername'] ?? '';
+    $apiSecret = $params['serverpassword'] ?? '';
 
     $url = rtrim($apiUrl, '/') . $endpoint;
+
+    // Debug logging
+    $debugInfo = [
+        'url' => $url,
+        'method' => $method,
+        'api_key' => $apiKey,
+        'api_secret_length' => strlen($apiSecret),
+        'hostname' => $params['serverhostname'] ?? 'not set',
+        'secure' => $params['serversecure'] ?? 'not set',
+    ];
 
     $headers = [
         'Content-Type: application/json',
@@ -345,23 +355,13 @@ function logicpanel_apiCall(array $params, string $method, string $endpoint, arr
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
-    // SSL verification - disable for localhost/development
-    $hostname = $params['serverhostname'] ?? '';
-    $isLocalhost = in_array($hostname, ['localhost', '127.0.0.1', '::1']) ||
-        strpos($hostname, '.local') !== false ||
-        strpos($hostname, '.test') !== false;
-
-    if ($isLocalhost || empty($params['serversecure'])) {
-        // Disable SSL verification for local development
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-    } else {
-        // Enable SSL verification for production
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-    }
+    // Always disable SSL verification for now (debugging)
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
     if ($method === 'POST') {
         curl_setopt($ch, CURLOPT_POST, true);
@@ -370,8 +370,20 @@ function logicpanel_apiCall(array $params, string $method, string $endpoint, arr
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlInfo = curl_getinfo($ch);
     $error = curl_error($ch);
+    $errno = curl_errno($ch);
     curl_close($ch);
+
+    // Log everything
+    logModuleCall('logicpanel', $endpoint, [
+        'debug' => $debugInfo,
+        'post_data' => $data,
+        'curl_errno' => $errno,
+        'curl_error' => $error,
+        'http_code' => $httpCode,
+        'curl_info' => $curlInfo,
+    ], $response, json_decode($response, true));
 
     if ($error) {
         throw new Exception('cURL Error: ' . $error);
@@ -382,8 +394,6 @@ function logicpanel_apiCall(array $params, string $method, string $endpoint, arr
     if ($httpCode >= 400) {
         throw new Exception($decoded['error'] ?? 'HTTP Error: ' . $httpCode);
     }
-
-    logModuleCall('logicpanel', $endpoint, $data, $response, $decoded);
 
     return $decoded ?: [];
 }

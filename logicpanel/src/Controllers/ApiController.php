@@ -28,7 +28,8 @@ class ApiController extends BaseController
      */
     public function health(Request $request, Response $response): Response
     {
-        $dockerOk = $this->docker->ping();
+        // $dockerOk = $this->docker->ping(); // Creating timeout issue
+        $dockerOk = false; // Temporarily disabled
         $dbOk = true;
 
         try {
