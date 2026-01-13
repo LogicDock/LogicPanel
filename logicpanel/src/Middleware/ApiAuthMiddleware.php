@@ -48,11 +48,8 @@ class ApiAuthMiddleware implements MiddlewareInterface
             return $this->unauthorized('API credentials required');
         }
 
-        // Get table prefix from ENV
-        $prefix = $_ENV['DB_PREFIX'] ?? 'lp_';
-
-        // Look up API key in database
-        $apiKeyRecord = DB::table($prefix . 'api_keys')
+        // Look up API key in database (Eloquent already handles prefix)
+        $apiKeyRecord = DB::table('api_keys')
             ->where('api_key', $apiKey)
             ->where('is_active', 1)
             ->first();
@@ -61,23 +58,13 @@ class ApiAuthMiddleware implements MiddlewareInterface
             return $this->unauthorized('Invalid API key');
         }
 
-        // Verify secret (stored as hashed or plain)
-        $secretValid = false;
-
-        // Check if secret is hashed (starts with $2y$ for bcrypt)
-        if (strpos($apiKeyRecord->api_secret, '$2y$') === 0) {
-            $secretValid = password_verify($apiSecret, $apiKeyRecord->api_secret);
-        } else {
-            // Plain text comparison
-            $secretValid = hash_equals($apiKeyRecord->api_secret, $apiSecret);
-        }
-
-        if (!$secretValid) {
+        // Verify secret (stored as plain text)
+        if (!hash_equals($apiKeyRecord->api_secret, $apiSecret)) {
             return $this->unauthorized('Invalid API secret');
         }
 
         // Update last used timestamp
-        DB::table($prefix . 'api_keys')
+        DB::table('api_keys')
             ->where('id', $apiKeyRecord->id)
             ->update(['updated_at' => date('Y-m-d H:i:s')]);
 
