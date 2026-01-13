@@ -65,8 +65,8 @@ try {
         $pdo->prepare("UPDATE lp_api_keys SET api_key=?, api_secret=? WHERE id=?")
             ->execute([$apiKey, $apiSecret, $key['id']]);  // Plain text secret
     } else {
-        $pdo->prepare("INSERT INTO lp_api_keys (name, api_key, api_secret, permissions, status, created_at, updated_at) VALUES ('WHMCS Integration', ?, ?, ?, 'active', NOW(), NOW())")
-            ->execute([$apiKey, $apiSecret, json_encode(['create', 'suspend', 'unsuspend', 'terminate', 'sso'])]);  // Plain text secret
+        $pdo->prepare("INSERT INTO lp_api_keys (name, api_key, api_secret, permissions, is_active, created_at, updated_at) VALUES ('WHMCS Integration', ?, ?, ?, 1, NOW(), NOW())")
+            ->execute([$apiKey, $apiSecret, json_encode(['create', 'suspend', 'unsuspend', 'terminate', 'sso'])]);
     }
 
     echo "API Key: $apiKey\n";

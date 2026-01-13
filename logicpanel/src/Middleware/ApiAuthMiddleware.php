@@ -54,7 +54,7 @@ class ApiAuthMiddleware implements MiddlewareInterface
         // Look up API key in database
         $apiKeyRecord = DB::table($prefix . 'api_keys')
             ->where('api_key', $apiKey)
-            ->where('status', 'active')
+            ->where('is_active', 1)
             ->first();
 
         if (!$apiKeyRecord) {
