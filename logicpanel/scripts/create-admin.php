@@ -5,93 +5,71 @@ try {
     $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
     $dotenv->load();
 } catch (Exception $e) {
-    echo "Warning: Could not load .env file\n";
 }
 
 $envFile = __DIR__ . '/../.env';
 $envVars = [];
 if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-            list($key, $value) = explode('=', $line, 2);
-            $value = trim($value, '"\'');
-            $envVars[trim($key)] = $value;
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos($line, '=') !== false && $line[0] !== '#') {
+            list($k, $v) = explode('=', $line, 2);
+            $envVars[trim($k)] = trim($v, '"\'');
         }
     }
 }
 
-function getEnvValue($key, $default, $envVars)
+function env($k, $d, $e)
 {
-    if (isset($_ENV[$key]) && $_ENV[$key] !== '')
-        return $_ENV[$key];
-    $val = getenv($key);
-    if ($val !== false && $val !== '')
-        return $val;
-    if (isset($envVars[$key]) && $envVars[$key] !== '')
-        return $envVars[$key];
-    return $default;
+    if (isset($_ENV[$k]) && $_ENV[$k] !== '')
+        return $_ENV[$k];
+    $v = getenv($k);
+    if ($v !== false && $v !== '')
+        return $v;
+    return $e[$k] ?? $d;
 }
 
 try {
     $pdo = new PDO(
-        "mysql:host=" . getEnvValue('DB_HOST', 'logicpanel-db', $envVars) .
-        ";port=" . getEnvValue('DB_PORT', '3306', $envVars) .
-        ";dbname=" . getEnvValue('DB_DATABASE', 'logicpanel', $envVars),
-        getEnvValue('DB_USERNAME', 'logicpanel', $envVars),
-        getEnvValue('DB_PASSWORD', 'password', $envVars),
+        "mysql:host=" . env('DB_HOST', 'logicpanel-db', $envVars) .
+        ";dbname=" . env('DB_DATABASE', 'logicpanel', $envVars),
+        env('DB_USERNAME', 'logicpanel', $envVars),
+        env('DB_PASSWORD', 'password', $envVars),
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
-    $stmt = $pdo->prepare("SELECT id FROM lp_users WHERE role = 'admin' LIMIT 1");
-    $stmt->execute();
+    $username = env('ADMIN_USERNAME', 'admin', $envVars);
+    $email = env('ADMIN_EMAIL', 'admin@localhost', $envVars);
+    $password = env('ADMIN_PASSWORD', 'password', $envVars);
+    $hash = password_hash($password, PASSWORD_DEFAULT);
 
-    if ($stmt->rowCount() > 0) {
-        echo "Admin user already exists.\n";
-        exit(0);
+    $stmt = $pdo->query("SELECT id FROM lp_users WHERE role = 'admin' LIMIT 1");
+    $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($admin) {
+        $pdo->prepare("UPDATE lp_users SET username=?, email=?, password=?, name='Administrator' WHERE id=?")
+            ->execute([$username, $email, $hash, $admin['id']]);
+        echo "Admin updated: $username\n";
+    } else {
+        $pdo->prepare("INSERT INTO lp_users (username, email, password, name, role, is_active, created_at, updated_at) VALUES (?, ?, ?, 'Administrator', 'admin', 1, NOW(), NOW())")
+            ->execute([$username, $email, $hash]);
+        echo "Admin created: $username\n";
     }
 
-    $adminUsername = getEnvValue('ADMIN_USERNAME', 'admin', $envVars);
-    $adminEmail = getEnvValue('ADMIN_EMAIL', 'admin@localhost', $envVars);
-    $adminPassword = getEnvValue('ADMIN_PASSWORD', 'password', $envVars);
+    $apiKey = env('API_KEY', 'lp_' . bin2hex(random_bytes(16)), $envVars);
+    $apiSecret = env('API_SECRET', bin2hex(random_bytes(32)), $envVars);
 
-    echo "Creating admin: $adminUsername ($adminEmail)\n";
+    $stmt = $pdo->query("SELECT id FROM lp_api_keys WHERE name = 'WHMCS Integration' LIMIT 1");
+    $key = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $stmt = $pdo->prepare("SELECT id FROM lp_users WHERE username = ?");
-    $stmt->execute([$adminUsername]);
-    if ($stmt->rowCount() > 0) {
-        $adminUsername = 'admin_' . substr(md5(time()), 0, 6);
+    if ($key) {
+        $pdo->prepare("UPDATE lp_api_keys SET api_key=?, api_secret=? WHERE id=?")
+            ->execute([$apiKey, password_hash($apiSecret, PASSWORD_DEFAULT), $key['id']]);
+    } else {
+        $pdo->prepare("INSERT INTO lp_api_keys (name, api_key, api_secret, permissions, status, created_at, updated_at) VALUES ('WHMCS Integration', ?, ?, ?, 'active', NOW(), NOW())")
+            ->execute([$apiKey, password_hash($apiSecret, PASSWORD_DEFAULT), json_encode(['create', 'suspend', 'unsuspend', 'terminate', 'sso'])]);
     }
 
-    $hashedPassword = password_hash($adminPassword, PASSWORD_DEFAULT);
-
-    $stmt = $pdo->prepare("
-        INSERT INTO lp_users (username, email, password, name, role, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, 'Administrator', 'admin', 1, NOW(), NOW())
-    ");
-    $stmt->execute([$adminUsername, $adminEmail, $hashedPassword]);
-
-    echo "Admin created: $adminUsername / $adminPassword\n";
-
-    $apiKey = getEnvValue('API_KEY', 'lp_' . bin2hex(random_bytes(16)), $envVars);
-    $apiSecret = getEnvValue('API_SECRET', bin2hex(random_bytes(32)), $envVars);
-
-    $stmt = $pdo->prepare("SELECT id FROM lp_api_keys WHERE name = 'WHMCS Integration' LIMIT 1");
-    $stmt->execute();
-
-    if ($stmt->rowCount() == 0) {
-        $stmt = $pdo->prepare("
-            INSERT INTO lp_api_keys (name, api_key, api_secret, permissions, status, created_at, updated_at)
-            VALUES ('WHMCS Integration', ?, ?, ?, 'active', NOW(), NOW())
-        ");
-        $permissions = json_encode(['create', 'suspend', 'unsuspend', 'terminate', 'sso']);
-        $stmt->execute([$apiKey, password_hash($apiSecret, PASSWORD_DEFAULT), $permissions]);
-        echo "API Key: $apiKey\n";
-    }
-
-    exit(0);
-
-} catch (PDOException $e) {
+} catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     exit(1);
 }
