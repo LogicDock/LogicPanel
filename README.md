@@ -11,10 +11,15 @@
 ## Quick Install
 
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh | tr -d '\r')
+curl -sL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh -o install.sh && sudo bash install.sh
 ```
 
-That's it! The installer will guide you through the setup process.
+That's it! The installer will:
+- Install Docker (if not present)
+- Setup Nginx Proxy with SSL
+- Deploy LogicPanel
+- Create database and admin user automatically
+- Configure everything for you
 
 ---
 
@@ -61,7 +66,7 @@ panel.yourdomain.com -> YOUR_SERVER_IP
 ### Step 2: Run Installation
 
 ```bash
-curl -sL https://raw.githubusercontent.com/logicdock/logicpanel/main/install.sh | sudo bash
+curl -sL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh -o install.sh && sudo bash install.sh
 ```
 
 ### Step 3: Follow the Prompts
@@ -154,8 +159,8 @@ whmcs show
 
 ```
 /opt/logicpanel/
-â”œâ”€â”€ docker-compose.yml    # Container definitions
-â””â”€â”€ .env                  # Configuration & credentials
+ docker-compose.yml    # Container definitions
+ .env                  # Configuration & credentials
 ```
 
 ---
