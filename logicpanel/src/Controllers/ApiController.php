@@ -37,8 +37,9 @@ class ApiController extends BaseController
             $dbOk = false;
         }
 
+        // Database is required, Docker is optional for WHMCS integration
         return $this->jsonResponse($response, [
-            'status' => ($dockerOk && $dbOk) ? 'healthy' : 'degraded',
+            'status' => $dbOk ? 'healthy' : 'degraded',
             'docker' => $dockerOk ? 'connected' : 'disconnected',
             'database' => $dbOk ? 'connected' : 'disconnected',
             'timestamp' => date('c')
