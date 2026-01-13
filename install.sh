@@ -15,7 +15,7 @@ log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_error() { echo -e "${RED}[X]${NC} $1"; }
 log_step() { echo -e "\n${CYAN}============================================${NC}"; echo -e "${WHITE}  $1${NC}"; echo -e "${CYAN}============================================${NC}"; }
-generate_password() { openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c "$1"; }
+generate_password() { openssl rand -base64 32 | tr -dc 'a-zA-Z0-9@#' | head -c "$1"; }
 generate_api_key() { echo "lp_$(openssl rand -hex 16)"; }
 generate_api_secret() { openssl rand -hex 32; }
 show_banner() {
@@ -106,11 +106,11 @@ get_configuration() {
     read -p "Panel Domain (e.g., panel.example.com): " PANEL_DOMAIN
     [ -z "$PANEL_DOMAIN" ] && log_error "Domain required" && exit 1
     
+    read -p "Admin Username (no spaces): " ADMIN_USERNAME
+    [ -z "$ADMIN_USERNAME" ] && log_error "Username required" && exit 1
+    
     read -p "Admin Email: " ADMIN_EMAIL
     [ -z "$ADMIN_EMAIL" ] && log_error "Email required" && exit 1
-    
-    read -p "Admin Name [Administrator]: " ADMIN_NAME
-    ADMIN_NAME=${ADMIN_NAME:-Administrator}
     
     read -s -p "Admin Password (empty=auto): " ADMIN_PASSWORD
     echo ""
@@ -147,8 +147,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       APP_SECRET: ${APP_SECRET}
       APP_URL: https://${PANEL_DOMAIN}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_NAME: ${ADMIN_NAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       API_KEY: ${API_KEY}
       API_SECRET: ${API_SECRET}
@@ -172,6 +172,7 @@ networks:
 EOF
     cat > .env << EOF
 PANEL_DOMAIN=${PANEL_DOMAIN}
+ADMIN_USERNAME=${ADMIN_USERNAME}
 ADMIN_EMAIL=${ADMIN_EMAIL}
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
 API_KEY=${API_KEY}
@@ -203,6 +204,7 @@ show_summary() {
     echo ""
     echo -e "${GREEN}=== LogicPanel Installed ===${NC}"
     echo -e "URL: https://${PANEL_DOMAIN}"
+    echo -e "Username: ${ADMIN_USERNAME}"
     echo -e "Email: ${ADMIN_EMAIL}"
     echo -e "Password: ${ADMIN_PASSWORD}"
     echo ""

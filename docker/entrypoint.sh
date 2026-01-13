@@ -22,7 +22,7 @@ cat > /var/www/html/.env << EOF
 APP_ENV="${APP_ENV:-production}"
 APP_DEBUG="${APP_DEBUG:-false}"
 APP_URL="${APP_URL:-http://localhost}"
-APP_SECRET="${APP_SECRET:-$(openssl rand -hex 32)}"
+APP_SECRET="${APP_SECRET:-defaultsecret}"
 
 DB_HOST="${DB_HOST:-logicpanel-db}"
 DB_PORT="${DB_PORT:-3306}"
@@ -31,8 +31,8 @@ DB_USERNAME="${DB_USERNAME:-logicpanel}"
 DB_PASSWORD="${DB_PASSWORD:-password}"
 DB_PREFIX="${DB_PREFIX:-lp_}"
 
+ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@localhost}"
-ADMIN_NAME="${ADMIN_NAME:-Administrator}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-password}"
 
 API_KEY="${API_KEY:-lp_default}"
@@ -40,9 +40,7 @@ API_SECRET="${API_SECRET:-default}"
 EOF
 chmod 644 /var/www/html/.env
 
-echo ".env file created with:"
-echo "  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@localhost}"
-echo "  ADMIN_NAME: ${ADMIN_NAME:-Administrator}"
+echo ".env created - ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}"
 
 echo "Setting up database..."
 if php /var/www/html/scripts/setup-db.php; then
