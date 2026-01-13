@@ -1,0 +1,29 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Environment
+.env
+!.env.example
+
+# Storage (runtime files)
+storage/logs/*
+storage/cache/*
+storage/sessions/*
+!storage/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Composer
+composer.lock
+
+# Build artifacts
+*.log
