@@ -64,9 +64,9 @@ class ApiAuthMiddleware implements MiddlewareInterface
         }
 
         // Update last used timestamp
-        DB::table('api_keys')
-            ->where('id', $apiKeyRecord->id)
-            ->update(['updated_at' => date('Y-m-d H:i:s')]);
+        // DB::table('api_keys')
+        //     ->where('id', $apiKeyRecord->id)
+        //     ->update(['updated_at' => date('Y-m-d H:i:s')]);
 
         // Add API key info to request
         $request = $request->withAttribute('api_key', $apiKeyRecord);
