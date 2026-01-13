@@ -155,15 +155,17 @@ A license is required to use the WHMCS module:
 | Name | LogicPanel Server |
 | Module | LogicPanel - Node.js Hosting |
 | Hostname | `panel.yourdomain.com` |
-| Secure | Yes |
-| Username | *(leave empty)* |
+| Secure | ✅ Yes (Check SSL) |
+| Username | `[API Key]` |
 | Password | `[API Secret]` |
-| Access Hash | `[API Key]` |
+| Access Hash | *(leave empty)* |
 
 ### Get API Credentials
 
+After installation, credentials are shown in terminal. Or check:
+
 ```bash
-whmcs show
+cat /opt/logicpanel/.env
 ```
 
 ---

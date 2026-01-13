@@ -200,17 +200,33 @@ esac' > /usr/local/bin/logicpanel
 }
 show_summary() {
     log_step "Step 6/6: Complete!"
-    sleep 5
+    
     echo ""
+    echo -e "${YELLOW}Waiting for SSL certificate and services to start...${NC}"
+    echo -e "${YELLOW}This may take 30-60 seconds...${NC}"
+    echo ""
+    
+    for i in {1..12}; do
+        echo -ne "\r${CYAN}[${NC}"
+        for j in $(seq 1 $i); do echo -ne "="; done
+        for j in $(seq $i 11); do echo -ne " "; done
+        echo -ne "${CYAN}]${NC} $((i*5))s"
+        sleep 5
+    done
+    echo ""
+    echo ""
+    
     echo -e "${GREEN}=== LogicPanel Installed ===${NC}"
     echo -e "URL: https://${PANEL_DOMAIN}"
     echo -e "Username: ${ADMIN_USERNAME}"
     echo -e "Email: ${ADMIN_EMAIL}"
     echo -e "Password: ${ADMIN_PASSWORD}"
     echo ""
-    echo -e "${YELLOW}WHMCS Integration:${NC}"
-    echo -e "API Key: ${API_KEY}"
-    echo -e "API Secret: ${API_SECRET}"
+    echo -e "${YELLOW}WHMCS Server Configuration:${NC}"
+    echo -e "  Hostname: ${PANEL_DOMAIN}"
+    echo -e "  Username: ${API_KEY}"
+    echo -e "  Password: ${API_SECRET}"
+    echo -e "  Secure: Yes (check SSL)"
     echo ""
 }
 main() {
