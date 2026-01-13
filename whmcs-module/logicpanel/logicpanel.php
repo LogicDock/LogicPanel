@@ -32,11 +32,6 @@ function logicpanel_MetaData()
  */
 function logicpanel_ConfigOptions()
 {
-    // Check if refresh is requested
-    if (isset($_GET['refresh_packages']) && $_GET['refresh_packages'] == '1') {
-        logicpanel_clearPackagesCache();
-    }
-
     // Fetch packages from LogicPanel API
     $packages = logicpanel_getPackages();
     $packageOptions = [];
@@ -49,21 +44,12 @@ function logicpanel_ConfigOptions()
         $packageOptions['starter'] = 'Starter (Configure API first)';
     }
 
-    // Build refresh link - preserve current page context
-    $productId = $_GET['id'] ?? '';
-    $tab = $_GET['tab'] ?? '3'; // Module Settings is tab 3
-    if ($productId) {
-        $refreshUrl = 'configproducts.php?action=edit&id=' . urlencode($productId) . '&tab=' . urlencode($tab) . '&refresh_packages=1';
-    } else {
-        $refreshUrl = 'configproducts.php?refresh_packages=1';
-    }
-
     return [
         'Package' => [
             'FriendlyName' => 'Hosting Package',
             'Type' => 'dropdown',
             'Options' => $packageOptions,
-            'Description' => 'Select resource package from LogicPanel | <a href="' . htmlspecialchars($refreshUrl) . '" style="color:#0066cc;">🔄 Refresh Packages</a>',
+            'Description' => 'Select resource package from LogicPanel',
         ],
         'Node Version' => [
             'FriendlyName' => 'Node.js Version',
@@ -84,18 +70,6 @@ function logicpanel_ConfigOptions()
             'Description' => 'Default port for Node.js app',
         ],
     ];
-}
-
-/**
- * Clear packages cache
- */
-function logicpanel_clearPackagesCache()
-{
-    try {
-        Capsule::table('tblconfiguration')->where('setting', 'logicpanel_packages')->delete();
-    } catch (Exception $e) {
-        // Ignore errors
-    }
 }
 
 /**
