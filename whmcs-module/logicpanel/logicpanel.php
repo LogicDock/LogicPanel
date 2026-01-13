@@ -90,7 +90,7 @@ function logicpanel_CreateAccount(array $params)
             'port' => $params['configoption3'] ?: 3000,
         ];
 
-        $response = logicpanel_apiCall($params, 'POST', '/api/account/create', $postData);
+        $response = logicpanel_apiCall($params, 'POST', '/api/v1/account/create', $postData);
 
         if ($response['success']) {
             // Store service ID in custom field
@@ -122,7 +122,7 @@ function logicpanel_SuspendAccount(array $params)
             'reason' => $params['suspendreason'] ?? 'Suspended by WHMCS',
         ];
 
-        $response = logicpanel_apiCall($params, 'POST', '/api/account/suspend', $postData);
+        $response = logicpanel_apiCall($params, 'POST', '/api/v1/account/suspend', $postData);
 
         if ($response['success']) {
             return 'success';
@@ -145,7 +145,7 @@ function logicpanel_UnsuspendAccount(array $params)
             'whmcs_service_id' => $params['serviceid'],
         ];
 
-        $response = logicpanel_apiCall($params, 'POST', '/api/account/unsuspend', $postData);
+        $response = logicpanel_apiCall($params, 'POST', '/api/v1/account/unsuspend', $postData);
 
         if ($response['success']) {
             return 'success';
@@ -168,7 +168,7 @@ function logicpanel_TerminateAccount(array $params)
             'whmcs_service_id' => $params['serviceid'],
         ];
 
-        $response = logicpanel_apiCall($params, 'POST', '/api/account/terminate', $postData);
+        $response = logicpanel_apiCall($params, 'POST', '/api/v1/account/terminate', $postData);
 
         if ($response['success']) {
             return 'success';
@@ -192,7 +192,7 @@ function logicpanel_ChangePassword(array $params)
             'whmcs_user_id' => $params['userid'],
         ];
 
-        $response = logicpanel_apiCall($params, 'POST', '/api/account/password', $postData);
+        $response = logicpanel_apiCall($params, 'POST', '/api/v1/account/password', $postData);
 
         if ($response['success']) {
             return 'success';
@@ -217,7 +217,7 @@ function logicpanel_ClientArea(array $params)
             'whmcs_user_id' => $params['userid'],
         ];
 
-        $response = logicpanel_apiCall($params, 'POST', '/api/sso/generate', $postData);
+        $response = logicpanel_apiCall($params, 'POST', '/api/v1/sso/generate', $postData);
 
         $ssoUrl = $response['sso_url'] ?? '#';
 
@@ -227,7 +227,7 @@ function logicpanel_ClientArea(array $params)
 
     // Get service info
     try {
-        $serviceInfo = logicpanel_apiCall($params, 'GET', '/api/service/' . $params['serviceid']);
+        $serviceInfo = logicpanel_apiCall($params, 'GET', '/api/v1/service/' . $params['serviceid']);
     } catch (Exception $e) {
         $serviceInfo = ['service' => []];
     }
@@ -264,7 +264,7 @@ function logicpanel_AdminCustomButtonArray()
 function logicpanel_restartContainer(array $params)
 {
     try {
-        $response = logicpanel_apiCall($params, 'POST', '/api/service/' . $params['serviceid'] . '/restart', [
+        $response = logicpanel_apiCall($params, 'POST', '/api/v1/service/' . $params['serviceid'] . '/restart', [
             'whmcs_service_id' => $params['serviceid'],
         ]);
 
@@ -284,7 +284,7 @@ function logicpanel_restartContainer(array $params)
 function logicpanel_syncStatus(array $params)
 {
     try {
-        $response = logicpanel_apiCall($params, 'GET', '/api/service/' . $params['serviceid']);
+        $response = logicpanel_apiCall($params, 'GET', '/api/v1/service/' . $params['serviceid']);
 
         if ($response['success'] && isset($response['service'])) {
             return 'success';
@@ -302,17 +302,17 @@ function logicpanel_syncStatus(array $params)
 function logicpanel_TestConnection(array $params)
 {
     try {
-        $response = logicpanel_apiCall($params, 'GET', '/api/health');
+        $response = logicpanel_apiCall($params, 'GET', '/api/v1/health');
 
-        if ($response['status'] === 'healthy') {
+        if (isset($response['status']) && $response['status'] === 'healthy') {
             return [
                 'success' => true,
-                'message' => 'Connection successful! Docker: ' . $response['docker'] . ', Database: ' . $response['database'],
+                'message' => 'Connection successful! Docker: ' . ($response['docker'] ?? 'ok') . ', Database: ' . ($response['database'] ?? 'ok'),
             ];
         } else {
             return [
                 'success' => false,
-                'error' => 'Server is degraded: Docker=' . $response['docker'] . ', Database=' . $response['database'],
+                'error' => 'Server response: Docker=' . ($response['docker'] ?? 'unknown') . ', Database=' . ($response['database'] ?? 'unknown'),
             ];
         }
     } catch (Exception $e) {
@@ -329,8 +329,8 @@ function logicpanel_TestConnection(array $params)
 function logicpanel_apiCall(array $params, string $method, string $endpoint, array $data = [])
 {
     $apiUrl = logicpanel_getApiUrl($params);
-    $apiKey = $params['serveraccesshash'] ?? '';
-    $apiSecret = $params['serverpassword'] ?? '';
+    $apiKey = $params['serverusername'] ?? '';  // Username field = API Key
+    $apiSecret = $params['serverpassword'] ?? '';  // Password field = API Secret
 
     $url = rtrim($apiUrl, '/') . $endpoint;
 
@@ -451,8 +451,8 @@ function logicpanel_getPackages(): array
             'serverhostname' => $server->hostname,
             'serverport' => $server->port,
             'serversecure' => $server->secure,
-            'serveraccesshash' => decrypt($server->accesshash),
-            'serverpassword' => decrypt($server->password),
+            'serverusername' => decrypt($server->username),  // API Key
+            'serverpassword' => decrypt($server->password),  // API Secret
         ];
 
         $response = logicpanel_apiCall($params, 'GET', '/api/packages');

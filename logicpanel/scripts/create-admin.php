@@ -63,11 +63,13 @@ try {
 
     if ($key) {
         $pdo->prepare("UPDATE lp_api_keys SET api_key=?, api_secret=? WHERE id=?")
-            ->execute([$apiKey, password_hash($apiSecret, PASSWORD_DEFAULT), $key['id']]);
+            ->execute([$apiKey, $apiSecret, $key['id']]);  // Plain text secret
     } else {
         $pdo->prepare("INSERT INTO lp_api_keys (name, api_key, api_secret, permissions, status, created_at, updated_at) VALUES ('WHMCS Integration', ?, ?, ?, 'active', NOW(), NOW())")
-            ->execute([$apiKey, password_hash($apiSecret, PASSWORD_DEFAULT), json_encode(['create', 'suspend', 'unsuspend', 'terminate', 'sso'])]);
+            ->execute([$apiKey, $apiSecret, json_encode(['create', 'suspend', 'unsuspend', 'terminate', 'sso'])]);  // Plain text secret
     }
+
+    echo "API Key: $apiKey\n";
 
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";

@@ -48,25 +48,38 @@ class ApiAuthMiddleware implements MiddlewareInterface
             return $this->unauthorized('API credentials required');
         }
 
+        // Get table prefix from ENV
+        $prefix = $_ENV['DB_PREFIX'] ?? 'lp_';
+
         // Look up API key in database
-        $apiKeyRecord = DB::table('api_keys')
+        $apiKeyRecord = DB::table($prefix . 'api_keys')
             ->where('api_key', $apiKey)
-            ->where('is_active', 1)
+            ->where('status', 'active')
             ->first();
 
         if (!$apiKeyRecord) {
             return $this->unauthorized('Invalid API key');
         }
 
-        // Verify secret
-        if (!hash_equals($apiKeyRecord->api_secret, $apiSecret)) {
+        // Verify secret (stored as hashed or plain)
+        $secretValid = false;
+
+        // Check if secret is hashed (starts with $2y$ for bcrypt)
+        if (strpos($apiKeyRecord->api_secret, '$2y$') === 0) {
+            $secretValid = password_verify($apiSecret, $apiKeyRecord->api_secret);
+        } else {
+            // Plain text comparison
+            $secretValid = hash_equals($apiKeyRecord->api_secret, $apiSecret);
+        }
+
+        if (!$secretValid) {
             return $this->unauthorized('Invalid API secret');
         }
 
         // Update last used timestamp
-        DB::table('api_keys')
+        DB::table($prefix . 'api_keys')
             ->where('id', $apiKeyRecord->id)
-            ->update(['last_used_at' => date('Y-m-d H:i:s')]);
+            ->update(['updated_at' => date('Y-m-d H:i:s')]);
 
         // Add API key info to request
         $request = $request->withAttribute('api_key', $apiKeyRecord);
