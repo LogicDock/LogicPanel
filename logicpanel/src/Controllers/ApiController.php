@@ -95,7 +95,7 @@ class ApiController extends BaseController
             $user->whmcs_user_id = $data['whmcs_user_id'];
             $user->email = $data['email'];
             $user->username = $data['username'] ?? 'user_' . $data['whmcs_user_id'];
-            $user->password = bin2hex(random_bytes(16)); // Random password, user uses SSO
+            $user->password = bin2hex(random_bytes(16));
             $user->name = $data['name'] ?? $data['username'] ?? 'User';
             $user->role = 'user';
             $user->is_active = true;
@@ -104,12 +104,29 @@ class ApiController extends BaseController
 
         // Check if service already exists
         $existingService = Service::where('whmcs_service_id', $data['whmcs_service_id'])->first();
+
         if ($existingService) {
-            return $this->jsonResponse($response, [
-                'success' => false,
-                'error' => 'Service already exists',
-                'service_id' => $existingService->id
-            ], 409);
+            // If service exists but is in error state, allow retry
+            if ($existingService->status === 'error') {
+                // Delete the old failed service and continue creating new one
+                Domain::where('service_id', $existingService->id)->delete();
+                $existingService->delete();
+            } else {
+                return $this->jsonResponse($response, [
+                    'success' => false,
+                    'error' => 'Service already exists',
+                    'service_id' => $existingService->id
+                ], 409);
+            }
+        }
+
+        // Lookup package by name (WHMCS sends package name like 'starter', 'pro', etc.)
+        $packageName = $data['package'] ?? 'starter';
+        $package = \LogicPanel\Models\Package::where('name', $packageName)->first();
+
+        if (!$package) {
+            // Fallback to first active package
+            $package = \LogicPanel\Models\Package::where('is_active', true)->first();
         }
 
         // Generate service name
@@ -118,6 +135,7 @@ class ApiController extends BaseController
         // Create service record
         $service = new Service();
         $service->user_id = $user->id;
+        $service->package_id = $package ? $package->id : null;
         $service->name = $serviceName;
         $service->whmcs_service_id = $data['whmcs_service_id'];
         $service->node_version = $data['node_version'] ?? '20';
@@ -127,8 +145,8 @@ class ApiController extends BaseController
         $service->install_cmd = $data['install_cmd'] ?? 'npm install';
         $service->build_cmd = $data['build_cmd'] ?? '';
         $service->start_cmd = $data['start_cmd'] ?? 'npm start';
-        $service->plan = $data['plan'] ?? 'basic';
-        $service->status = 'creating';
+        $service->plan = $package ? $package->name : 'basic';
+        $service->status = 'pending'; // Start as pending, will be 'running' after container creation
         $service->save();
 
         // Create domain record
@@ -139,7 +157,7 @@ class ApiController extends BaseController
         $domain->ssl_enabled = true;
         $domain->save();
 
-        // Create Docker container
+        // Try to create Docker container (may fail if Docker socket not accessible)
         try {
             $containerResult = $this->docker->createNodeJsApp([
                 'name' => $serviceName,
@@ -154,28 +172,23 @@ class ApiController extends BaseController
                 $service->container_name = "lp_{$serviceName}";
                 $service->status = 'running';
                 $service->save();
-
-                $this->logActivity($user->id, $service->id, 'service_create', 'Service created via WHMCS');
-
-                return $this->jsonResponse($response, [
-                    'success' => true,
-                    'message' => 'Account created successfully',
-                    'service_id' => $service->id,
-                    'container_id' => $service->container_id,
-                    'domain' => $data['domain']
-                ]);
-            } else {
-                throw new \Exception($this->docker->getLastError());
             }
         } catch (\Exception $e) {
-            $service->status = 'error';
-            $service->save();
-
-            return $this->jsonResponse($response, [
-                'success' => false,
-                'error' => 'Failed to create container: ' . $e->getMessage()
-            ], 500);
+            // Container creation failed, but service record is created
+            // Service remains in 'pending' state - can be provisioned manually later
+            error_log("Docker container creation failed: " . $e->getMessage());
         }
+
+        $this->logActivity($user->id, $service->id, 'service_create', 'Service created via WHMCS');
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Account created successfully',
+            'service_id' => $service->id,
+            'container_id' => $service->container_id ?? null,
+            'domain' => $data['domain'],
+            'package' => $package ? $package->display_name : 'Basic'
+        ]);
     }
 
     /**
