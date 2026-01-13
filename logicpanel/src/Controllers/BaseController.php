@@ -24,6 +24,22 @@ abstract class BaseController
         $data['user_role'] = $_SESSION['user_role'] ?? null;
         $data['base_url'] = '';
 
+        // Auto-detect current_page from URL if not set
+        if (!isset($data['current_page'])) {
+            $uri = $_SERVER['REQUEST_URI'] ?? '/';
+            $path = parse_url($uri, PHP_URL_PATH);
+
+            if (strpos($path, '/admin/packages') !== false) {
+                $data['current_page'] = 'packages';
+            } elseif (strpos($path, '/admin/api-keys') !== false) {
+                $data['current_page'] = 'apikeys';
+            } elseif (strpos($path, '/admin') !== false) {
+                $data['current_page'] = 'admin';
+            } elseif ($path === '/' || $path === '') {
+                $data['current_page'] = 'dashboard';
+            }
+        }
+
         // Build template path
         $templatePath = BASE_PATH . '/templates/' . $template . '.php';
 
