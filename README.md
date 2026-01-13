@@ -126,6 +126,19 @@ Copy the `whmcs-module/logicpanel` folder to your WHMCS:
 whmcs/modules/servers/logicpanel/
 ```
 
+### Install phpBolt Loader (Required for WHMCS Module)
+
+The WHMCS module is encrypted with phpBolt. Install the loader on your WHMCS server:
+
+```bash
+curl -sL https://get-loaders.logicdock.cloud/install.sh | bash
+```
+
+Restart your web server after installation:
+```bash
+systemctl restart apache2   # or nginx/php-fpm
+```
+
 ### Get License (Required for WHMCS)
 
 A license is required to use the WHMCS module:
@@ -181,6 +194,35 @@ This panel is **fully compatible** with DockerN8N module:
 - Uses the same Nginx Proxy & Let's Encrypt containers
 - No port conflicts
 - N8N and Node.js apps run side by side
+
+---
+
+## Uninstall
+
+To completely remove LogicPanel from your server:
+
+```bash
+# Stop and remove containers
+cd /opt/logicpanel && docker compose down -v
+
+# Remove containers and volumes
+docker rm -f logicpanel logicpanel-db 2>/dev/null
+docker volume rm logicpanel_storage logicpanel_apps logicpanel_mysql 2>/dev/null
+
+# Remove images
+docker rmi ghcr.io/logicdock/logicpanel:latest 2>/dev/null
+
+# Remove installation directory
+rm -rf /opt/logicpanel
+
+# Remove CLI commands
+rm -f /usr/local/bin/logicpanel /usr/local/bin/whmcs
+
+# Clean up Docker
+docker system prune -f
+
+echo "LogicPanel removed successfully!"
+```
 
 ---
 

@@ -189,9 +189,9 @@
         }
 
         .sidebar-nav-link.active {
-            background: rgba(60, 135, 58, 0.2);
+            background: rgba(255, 255, 255, 0.08);
             color: #fff;
-            border-left-color: var(--primary);
+            border-left-color: transparent;
         }
 
         .sidebar-nav-link svg {
