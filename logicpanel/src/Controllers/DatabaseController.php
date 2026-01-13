@@ -231,7 +231,7 @@ class DatabaseController extends BaseController
 
         // Redirect to Adminer proxy
         return $response
-            ->withHeader('Location', '/logicpanel/public/adminer/?db=' . $dbId)
+            ->withHeader('Location', '/adminer/?db=' . $dbId)
             ->withStatus(302);
     }
 

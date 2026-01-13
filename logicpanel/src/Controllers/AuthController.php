@@ -24,7 +24,7 @@ class AuthController extends BaseController
 
         if (isset($_SESSION['user_id'])) {
             return $response
-                ->withHeader('Location', '/logicpanel/public/')
+                ->withHeader('Location', '/')
                 ->withStatus(302);
         }
 
@@ -91,7 +91,7 @@ class AuthController extends BaseController
         $this->logActivity($user->id, 'login', 'User logged in');
 
         return $response
-            ->withHeader('Location', '/logicpanel/public/')
+            ->withHeader('Location', '/')
             ->withStatus(302);
     }
 
@@ -160,7 +160,7 @@ class AuthController extends BaseController
         $this->logActivity($user->id, 'sso_login', 'User logged in via SSO');
 
         return $response
-            ->withHeader('Location', '/logicpanel/public/')
+            ->withHeader('Location', '/')
             ->withStatus(302);
     }
 
@@ -185,7 +185,7 @@ class AuthController extends BaseController
         session_destroy();
 
         return $response
-            ->withHeader('Location', '/logicpanel/public/login')
+            ->withHeader('Location', '/login')
             ->withStatus(302);
     }
 
@@ -199,7 +199,7 @@ class AuthController extends BaseController
             $userCount = User::count();
             if ($userCount > 0) {
                 return $response
-                    ->withHeader('Location', '/logicpanel/public/login')
+                    ->withHeader('Location', '/login')
                     ->withStatus(302);
             }
         } catch (\Exception $e) {
@@ -261,7 +261,7 @@ class AuthController extends BaseController
         $this->logActivity($admin->id, 'setup', 'LogicPanel installed');
 
         return $response
-            ->withHeader('Location', '/logicpanel/public/login?setup=complete')
+            ->withHeader('Location', '/login?setup=complete')
             ->withStatus(302);
     }
 

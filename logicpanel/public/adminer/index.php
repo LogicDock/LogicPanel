@@ -9,7 +9,7 @@ session_start();
 
 // Check if user is logged in
 if (empty($_SESSION['user_id'])) {
-    header('Location: /logicpanel/public/login');
+    header('Location: /login');
     exit;
 }
 
@@ -197,7 +197,7 @@ $_SESSION['adminer_db'] = [
             <code>https://adminer.yourdomain.com</code>
         </p>
 
-        <a href="/logicpanel/public/databases" class="btn">← Back to Databases</a>
+        <a href="/databases" class="btn">← Back to Databases</a>
     </div>
 </body>
 

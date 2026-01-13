@@ -27,7 +27,7 @@
         </p>
         <p class="text-gray-500 dark:text-gray-500 mb-8">The page you're looking for doesn't exist or has been moved.
         </p>
-        <a href="<?= $base_url ?? '/logicpanel/public' ?>/"
+        <a href="<?= $base_url ?? '' ?>/"
             class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
             <i data-lucide="home" class="w-5 h-5"></i>
             Back to Dashboard

@@ -135,9 +135,9 @@ ob_start();
         <div class="form-group">
             <label class="form-label">API Endpoint</label>
             <div class="conn-string">
-                <code><?= ($_SERVER['REQUEST_SCHEME'] ?? 'https') ?>://<?= $_SERVER['HTTP_HOST'] ?>/logicpanel/public/api/packages</code>
+                <code><?= ($_SERVER['REQUEST_SCHEME'] ?? 'https') ?>://<?= $_SERVER['HTTP_HOST'] ?>/api/packages</code>
                 <button
-                    onclick="copyToClipboard('<?= ($_SERVER['REQUEST_SCHEME'] ?? 'https') ?>://<?= $_SERVER['HTTP_HOST'] ?>/logicpanel/public/api/packages')"
+                    onclick="copyToClipboard('<?= ($_SERVER['REQUEST_SCHEME'] ?? 'https') ?>://<?= $_SERVER['HTTP_HOST'] ?>/api/packages')"
                     class="copy-btn">
                     <i data-lucide="copy"></i>
                 </button>

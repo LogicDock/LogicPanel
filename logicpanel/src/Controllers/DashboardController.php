@@ -264,7 +264,7 @@ class DashboardController extends BaseController
             }
         }
 
-        return $this->redirect($response, '/logicpanel/public/admin/settings?saved=1');
+        return $this->redirect($response, '/admin/settings?saved=1');
     }
 
     /**

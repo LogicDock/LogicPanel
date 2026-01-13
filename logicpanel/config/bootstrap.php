@@ -54,7 +54,7 @@ AppFactory::setContainer($container);
 $app = AppFactory::create();
 
 // Set base path for subdirectory installation
-$app->setBasePath('/logicpanel/public');
+$app->setBasePath('');
 
 // Add Error Middleware
 $errorMiddleware = $app->addErrorMiddleware(

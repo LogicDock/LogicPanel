@@ -63,13 +63,13 @@ class AuthMiddleware implements MiddlewareInterface
 
         // Check if it's an AJAX request
         if ($request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized', 'redirect' => '/logicpanel/public/login']));
+            $response->getBody()->write(json_encode(['error' => 'Unauthorized', 'redirect' => '/login']));
             return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
         }
 
         // Regular redirect
         return $response
-            ->withHeader('Location', '/logicpanel/public/login')
+            ->withHeader('Location', '/login')
             ->withStatus(302);
     }
 }

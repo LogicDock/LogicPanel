@@ -22,7 +22,7 @@ abstract class BaseController
         $data['theme'] = $theme;
         $data['user_name'] = $_SESSION['user_name'] ?? null;
         $data['user_role'] = $_SESSION['user_role'] ?? null;
-        $data['base_url'] = '/logicpanel/public';
+        $data['base_url'] = '';
 
         // Build template path
         $templatePath = BASE_PATH . '/templates/' . $template . '.php';

@@ -12,7 +12,9 @@ RUN apk add --no-cache \
     docker-cli \
     mysql-client \
     nodejs \
-    npm
+    npm \
+    netcat-openbsd \
+    openssl
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql
@@ -31,16 +33,20 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Create storage directory
 RUN mkdir -p storage/logs storage/cache storage/sessions \
-    && chown -R www-data:www-data storage
+    && chown -R nobody:nobody storage
 
 # Copy nginx config
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 
 # Copy supervisor config
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/supervisord.conf /etc/supervisord.conf
+
+# Copy entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Expose port
 EXPOSE 80
 
-# Start supervisor
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Use entrypoint for auto-setup
+ENTRYPOINT ["/entrypoint.sh"]
