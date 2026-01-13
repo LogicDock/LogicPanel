@@ -49,10 +49,14 @@ function logicpanel_ConfigOptions()
         $packageOptions['starter'] = 'Starter (Configure API first)';
     }
 
-    // Build refresh link
-    $currentUrl = $_SERVER['REQUEST_URI'] ?? '';
-    $refreshUrl = preg_replace('/[&?]refresh_packages=1/', '', $currentUrl);
-    $refreshUrl .= (strpos($refreshUrl, '?') !== false) ? '&refresh_packages=1' : '?refresh_packages=1';
+    // Build refresh link - preserve current page context
+    $productId = $_GET['id'] ?? '';
+    $tab = $_GET['tab'] ?? '3'; // Module Settings is tab 3
+    if ($productId) {
+        $refreshUrl = 'configproducts.php?action=edit&id=' . urlencode($productId) . '&tab=' . urlencode($tab) . '&refresh_packages=1';
+    } else {
+        $refreshUrl = 'configproducts.php?refresh_packages=1';
+    }
 
     return [
         'Package' => [
