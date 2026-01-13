@@ -361,8 +361,8 @@ class ApiController extends BaseController
             'created_at' => date('Y-m-d H:i:s')
         ]);
 
-        $baseUrl = $_ENV['APP_URL'] ?? 'http://localhost/logicpanel';
-        $ssoUrl = "{$baseUrl}/public/sso/{$token}";
+        $baseUrl = $_ENV['APP_URL'] ?? 'https://logicpanel.logicdock.cloud';
+        $ssoUrl = "{$baseUrl}/sso/{$token}";
 
         return $this->jsonResponse($response, [
             'success' => true,
