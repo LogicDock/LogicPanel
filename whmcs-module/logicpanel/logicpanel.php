@@ -455,6 +455,10 @@ function logicpanel_getPackages(): array
         $username = decrypt($server->username);
         $password = decrypt($server->password);
 
+        // Sanitize credentials (remove non-printable characters to avoid header errors)
+        $username = preg_replace('/[\x00-\x1F\x7F]/', '', $username);
+        $password = preg_replace('/[\x00-\x1F\x7F]/', '', $password);
+
         $params = [
             'serverhostname' => $server->hostname,
             'serverport' => $server->port,
@@ -463,8 +467,8 @@ function logicpanel_getPackages(): array
             'serverpassword' => $password,  // API Secret
         ];
 
-        // Ensure we are using correct API version
-        $response = logicpanel_apiCall($params, 'GET', '/api/v1/packages');
+        // Note: /api/packages is outside the v1 group in routes.php
+        $response = logicpanel_apiCall($params, 'GET', '/api/packages');
         $packages = $response['packages'] ?? [];
 
         // Cache the packages if we got results
