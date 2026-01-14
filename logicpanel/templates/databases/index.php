@@ -192,7 +192,8 @@ if ($selectedService) {
                                     <button onclick="togglePassword()" class="copy-btn" id="togglePwdBtn">
                                         <i data-lucide="eye"></i>
                                     </button>
-                                    <button onclick="copyToClipboard('<?= htmlspecialchars($database->db_password ?? '') ?>')"
+                                    <button
+                                        onclick="copyToClipboard('<?= htmlspecialchars($database->db_password_decrypted ?? '') ?>')"
                                         class="copy-btn">
                                         <i data-lucide="copy"></i>
                                     </button>
@@ -201,7 +202,12 @@ if ($selectedService) {
                             <div class="db-info-item">
                                 <div class="db-info-label">Host</div>
                                 <div class="db-info-value">
-                                    <code><?= htmlspecialchars($database->container_id ?? 'lp_' . $database->service_id . '_' . $database->type) ?></code>
+                                    <code><?= htmlspecialchars($database->container_name ?? 'lp_' . $service->name . '_' . $database->type) ?></code>
+                                    <button
+                                        onclick="copyToClipboard('<?= htmlspecialchars($database->container_name ?? '') ?>')"
+                                        class="copy-btn">
+                                        <i data-lucide="copy"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div class="db-info-item">
@@ -216,7 +222,7 @@ if ($selectedService) {
                         <div class="form-group mt-20">
                             <label class="form-label">Connection String</label>
                             <?php
-                            $host = $database->container_id ?? 'lp_' . $database->service_id . '_' . $database->type;
+                            $host = $database->container_name ?? 'lp_' . $selectedService->name . '_' . $database->type;
                             if ($database->type === 'postgresql') {
                                 $connStr = "postgresql://{$database->db_user}:[PASSWORD]@{$host}:5432/{$database->db_name}";
                             } elseif ($database->type === 'mongodb') {
@@ -544,7 +550,7 @@ if ($selectedService) {
 </style>
 
 <script>
-    const actualPassword = '<?= htmlspecialchars($serviceDatabase->db_password ?? '') ?>';
+    const actualPassword = '<?= htmlspecialchars($serviceDatabase->db_password_decrypted ?? '') ?>';
     let passwordVisible = false;
 
     function togglePassword() {

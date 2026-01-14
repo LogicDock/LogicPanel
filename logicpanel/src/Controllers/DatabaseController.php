@@ -37,6 +37,8 @@ class DatabaseController extends BaseController
         foreach ($services as $service) {
             foreach ($service->databases as $db) {
                 $db->service_name = $service->name;
+                // Decrypt password for display
+                $db->db_password_decrypted = $this->decrypt($db->db_password);
                 $allDatabases[] = $db;
             }
         }
