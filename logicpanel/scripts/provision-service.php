@@ -5,13 +5,15 @@
  * Run on VPS: docker exec logicpanel php /var/www/html/scripts/provision-service.php <service_id>
  */
 
-require_once __DIR__ . '/../vendor/autoload.php';
+// Define base path
+define('BASE_PATH', dirname(__DIR__));
 
-// Load environment
-$dotenv = new Symfony\Component\Dotenv\Dotenv();
-if (file_exists(__DIR__ . '/../.env')) {
-    $dotenv->load(__DIR__ . '/../.env');
-}
+// Autoload
+require BASE_PATH . '/vendor/autoload.php';
+
+// Load environment variables
+$dotenv = Dotenv\Dotenv::createImmutable(BASE_PATH);
+$dotenv->load();
 
 // Database connection
 $capsule = new Illuminate\Database\Capsule\Manager();
