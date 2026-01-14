@@ -76,11 +76,6 @@ if ($selectedService) {
                         </option>
                     <?php endforeach; ?>
                 </select>
-
-                <span class="text-muted" style="font-size: 12px;">
-                    <i data-lucide="info" style="width: 14px; height: 14px;"></i>
-                    Each service can have 1 database
-                </span>
             </div>
         </div>
     </div>
@@ -101,8 +96,8 @@ if ($selectedService) {
                 <form id="createDbForm" method="POST" action="<?= $base_url ?>/databases/create">
                     <input type="hidden" name="service_id" value="<?= $selectedService->id ?>">
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: end;">
-                        <div class="form-group">
+                    <div style="display: flex; gap: 20px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1;">
                             <label class="form-label">Database Type</label>
                             <select name="type" required class="form-control">
                                 <option value="">Select database type...</option>
@@ -113,8 +108,8 @@ if ($selectedService) {
                             <small class="text-muted">Database name and credentials will be auto-generated</small>
                         </div>
 
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <div class="form-group" style="flex-shrink: 0;">
+                            <button type="submit" class="btn btn-primary">
                                 <i data-lucide="plus"></i>
                                 Create Database
                             </button>
