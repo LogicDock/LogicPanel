@@ -85,7 +85,7 @@ class DatabaseController extends BaseController
     }
 
     /**
-     * Create a new database
+     * Create a new database (using shared database containers)
      */
     public function create(Request $request, Response $response): Response
     {
@@ -127,25 +127,34 @@ class DatabaseController extends BaseController
             return $this->jsonResponse($response, ['success' => false, 'error' => "A {$type} database already exists for this service"], 400);
         }
 
-        // Generate credentials
-        $dbName = $data['db_name'] ?? strtolower($service->name) . '_db';
-        $dbUser = $data['db_user'] ?? strtolower($service->name) . '_user';
+        // Generate unique credentials
+        $serviceName = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($service->name));
+        $uniqueId = substr(md5($service->id . time()), 0, 6);
+
+        // Ensure db_name and db_user are always set
+        $dbName = !empty($data['db_name']) ? $data['db_name'] : $serviceName . '_db';
+        $dbUser = !empty($data['db_user']) ? $data['db_user'] : $serviceName . '_u' . $uniqueId;
         $dbPassword = $this->generatePassword();
-        $rootPassword = $this->generatePassword();
 
-        // Create container
-        $containerName = "lp_{$service->name}_{$type}";
-        $result = $this->docker->createDatabase($type, $service->name, [
-            'db_name' => $dbName,
-            'db_user' => $dbUser,
-            'db_pass' => $dbPassword,
-            'root_pass' => $rootPassword
-        ]);
+        // Get shared container name based on type
+        $sharedContainerName = $this->getSharedContainerName($type);
 
-        if (!$result) {
+        // Check if shared container exists
+        $containerInfo = $this->docker->inspectContainer($sharedContainerName);
+        if (!$containerInfo) {
             return $this->jsonResponse($response, [
                 'success' => false,
-                'error' => 'Failed to create database container: ' . $this->docker->getLastError()
+                'error' => "Shared {$type} container not found. Please run setup first."
+            ], 500);
+        }
+
+        // Create database and user in shared container
+        $createResult = $this->createDatabaseInSharedContainer($type, $sharedContainerName, $dbName, $dbUser, $dbPassword);
+
+        if (!$createResult['success']) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Failed to create database: ' . $createResult['error']
             ], 500);
         }
 
@@ -155,13 +164,13 @@ class DatabaseController extends BaseController
         // Save to database
         $database = new Database();
         $database->service_id = $serviceId;
-        $database->container_id = $result['Id'];
-        $database->container_name = $containerName;
+        $database->container_id = $sharedContainerName; // Use container name as reference
+        $database->container_name = $sharedContainerName;
         $database->type = $type;
         $database->db_name = $dbName;
         $database->db_user = $dbUser;
         $database->db_password = $this->encrypt($dbPassword);
-        $database->root_password = $this->encrypt($rootPassword);
+        $database->root_password = ''; // No root password for shared, not needed per-user
         $database->port = $port;
         $database->status = 'running';
         $database->save();
@@ -180,11 +189,77 @@ class DatabaseController extends BaseController
                 'db_name' => $dbName,
                 'db_user' => $dbUser,
                 'db_password' => $dbPassword, // Only returned once!
-                'root_password' => $type !== 'mongodb' ? $rootPassword : null,
-                'container_name' => $containerName,
-                'connection_string' => $this->getConnectionString($type, $containerName, $dbName, $dbUser, $dbPassword)
+                'host' => $sharedContainerName,
+                'port' => $port,
+                'connection_string' => $this->getConnectionString($type, $sharedContainerName, $dbName, $dbUser, $dbPassword)
             ]
         ]);
+    }
+
+    /**
+     * Get shared container name for database type
+     */
+    private function getSharedContainerName(string $type): string
+    {
+        $containers = [
+            'mariadb' => $_ENV['SHARED_MARIADB_CONTAINER'] ?? 'logicpanel-mariadb-shared',
+            'postgresql' => $_ENV['SHARED_POSTGRES_CONTAINER'] ?? 'logicpanel-postgres-shared',
+            'mongodb' => $_ENV['SHARED_MONGO_CONTAINER'] ?? 'logicpanel-mongo-shared',
+        ];
+        return $containers[$type] ?? 'logicpanel-mariadb-shared';
+    }
+
+    /**
+     * Create database and user in shared container with proper isolation
+     */
+    private function createDatabaseInSharedContainer(string $type, string $containerName, string $dbName, string $dbUser, string $dbPassword): array
+    {
+        $rootPassword = $_ENV['SHARED_DB_ROOT_PASSWORD'] ?? 'logicpanel_root_secret';
+
+        if ($type === 'mariadb') {
+            // MariaDB: Create database, user, and grant with connection limit
+            $sql = "CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; ";
+            $sql .= "CREATE USER IF NOT EXISTS '{$dbUser}'@'%' IDENTIFIED BY '{$dbPassword}'; ";
+            $sql .= "GRANT ALL PRIVILEGES ON `{$dbName}`.* TO '{$dbUser}'@'%'; ";
+            $sql .= "ALTER USER '{$dbUser}'@'%' WITH MAX_USER_CONNECTIONS 10; "; // Bad neighbor protection
+            $sql .= "FLUSH PRIVILEGES;";
+
+            $cmd = ['mysql', '-u', 'root', "-p{$rootPassword}", '-e', $sql];
+
+        } elseif ($type === 'postgresql') {
+            // PostgreSQL: Create user and database
+            $createUser = "CREATE USER {$dbUser} WITH PASSWORD '{$dbPassword}' CONNECTION LIMIT 10;";
+            $createDb = "CREATE DATABASE {$dbName} OWNER {$dbUser};";
+            $grantPrivs = "GRANT ALL PRIVILEGES ON DATABASE {$dbName} TO {$dbUser};";
+
+            // Execute each command separately for PostgreSQL
+            $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $createUser]);
+            $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $createDb]);
+            $result = $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $grantPrivs]);
+
+            return ['success' => true, 'output' => $result];
+
+        } elseif ($type === 'mongodb') {
+            // MongoDB: Create user with specific database access
+            $mongoCmd = "db.getSiblingDB('{$dbName}').createUser({user: '{$dbUser}', pwd: '{$dbPassword}', roles: [{role: 'dbOwner', db: '{$dbName}'}]})";
+            $cmd = ['mongosh', '-u', 'root', '-p', $rootPassword, '--authenticationDatabase', 'admin', '--eval', $mongoCmd];
+
+        } else {
+            return ['success' => false, 'error' => 'Unsupported database type'];
+        }
+
+        $result = $this->docker->execInContainer($containerName, $cmd);
+
+        // Check for errors in output
+        if ($result === null) {
+            return ['success' => false, 'error' => 'Container command failed'];
+        }
+
+        if (is_string($result) && (stripos($result, 'error') !== false && stripos($result, 'already exists') === false)) {
+            return ['success' => false, 'error' => $result];
+        }
+
+        return ['success' => true, 'output' => $result];
     }
 
     /**
@@ -260,10 +335,22 @@ class DatabaseController extends BaseController
             return $this->jsonResponse($response, ['success' => false, 'error' => 'Database not found'], 404);
         }
 
-        // Remove container
-        if ($database->container_id) {
-            $this->docker->stopContainer($database->container_id);
-            $this->docker->removeContainer($database->container_id, true, true);
+        $containerName = $database->container_name ?? $database->container_id;
+        $rootPassword = $_ENV['SHARED_DB_ROOT_PASSWORD'] ?? 'logicpanel_root_secret';
+
+        // Drop database and user from shared container (don't remove container!)
+        if ($database->type === 'mariadb') {
+            $sql = "DROP DATABASE IF EXISTS `{$database->db_name}`; DROP USER IF EXISTS '{$database->db_user}'@'%'; FLUSH PRIVILEGES;";
+            $cmd = ['mysql', '-u', 'root', "-p{$rootPassword}", '-e', $sql];
+            $this->docker->execInContainer($containerName, $cmd);
+        } elseif ($database->type === 'postgresql') {
+            // PostgreSQL: Drop database first, then user
+            $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', "DROP DATABASE IF EXISTS {$database->db_name};"]);
+            $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', "DROP USER IF EXISTS {$database->db_user};"]);
+        } elseif ($database->type === 'mongodb') {
+            $mongoCmd = "db.getSiblingDB('{$database->db_name}').dropDatabase()";
+            $cmd = ['mongosh', '-u', 'root', '-p', $rootPassword, '--authenticationDatabase', 'admin', '--eval', $mongoCmd];
+            $this->docker->execInContainer($containerName, $cmd);
         }
 
         $this->logActivity($user->id, $database->service_id, 'database_delete', "Deleted {$database->type} database: {$database->db_name}");
@@ -325,15 +412,18 @@ class DatabaseController extends BaseController
         // For now, create user in database container using docker exec
         // This would execute SQL commands via the container
         $containerName = $database->container_name ?? $database->container_id;
+        $rootPassword = $_ENV['SHARED_DB_ROOT_PASSWORD'] ?? 'logicpanel_root_secret';
 
         // Build SQL command based on database type
         if ($database->type === 'mariadb') {
             $sql = "CREATE USER IF NOT EXISTS '{$username}'@'%' IDENTIFIED BY '{$password}'; ";
-            $sql .= "GRANT {$privileges} ON {$database->db_name}.* TO '{$username}'@'%'; FLUSH PRIVILEGES;";
-            $cmd = ['mysql', '-u', 'root', '-p' . $this->decrypt($database->root_password), '-e', $sql];
+            $sql .= "GRANT {$privileges} ON `{$database->db_name}`.* TO '{$username}'@'%'; ";
+            $sql .= "ALTER USER '{$username}'@'%' WITH MAX_USER_CONNECTIONS 10; "; // Bad neighbor protection
+            $sql .= "FLUSH PRIVILEGES;";
+            $cmd = ['mysql', '-u', 'root', "-p{$rootPassword}", '-e', $sql];
         } elseif ($database->type === 'postgresql') {
-            $sql = "CREATE USER {$username} WITH PASSWORD '{$password}'; GRANT {$privileges} ON DATABASE {$database->db_name} TO {$username};";
-            $cmd = ['psql', '-U', $database->db_user, '-d', $database->db_name, '-c', $sql];
+            $sql = "CREATE USER {$username} WITH PASSWORD '{$password}' CONNECTION LIMIT 10; GRANT ALL ON DATABASE {$database->db_name} TO {$username};";
+            $cmd = ['psql', '-U', 'postgres', '-c', $sql];
         } else {
             return $this->jsonResponse($response, ['success' => false, 'error' => 'User creation not supported for ' . $database->type], 400);
         }
@@ -373,16 +463,18 @@ class DatabaseController extends BaseController
         // Generate new password
         $newPassword = $this->generatePassword();
         $containerName = $database->container_name ?? $database->container_id;
+        $rootPassword = $_ENV['SHARED_DB_ROOT_PASSWORD'] ?? 'logicpanel_root_secret';
 
         // Update password in database container
         if ($database->type === 'mariadb') {
             $sql = "ALTER USER '{$database->db_user}'@'%' IDENTIFIED BY '{$newPassword}'; FLUSH PRIVILEGES;";
-            $cmd = ['mysql', '-u', 'root', '-p' . $this->decrypt($database->root_password), '-e', $sql];
+            $cmd = ['mysql', '-u', 'root', "-p{$rootPassword}", '-e', $sql];
         } elseif ($database->type === 'postgresql') {
             $sql = "ALTER USER {$database->db_user} WITH PASSWORD '{$newPassword}';";
             $cmd = ['psql', '-U', 'postgres', '-c', $sql];
         } elseif ($database->type === 'mongodb') {
-            $cmd = ['mongosh', '--eval', "db.changeUserPassword('{$database->db_user}', '{$newPassword}')"];
+            $mongoCmd = "db.getSiblingDB('{$database->db_name}').updateUser('{$database->db_user}', {pwd: '{$newPassword}'})";
+            $cmd = ['mongosh', '-u', 'root', '-p', $rootPassword, '--authenticationDatabase', 'admin', '--eval', $mongoCmd];
         } else {
             return $this->jsonResponse($response, ['success' => false, 'error' => 'Password reset not supported'], 400);
         }
