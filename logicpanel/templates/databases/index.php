@@ -101,7 +101,7 @@ if ($selectedService) {
                 <form id="createDbForm" method="POST" action="<?= $base_url ?>/databases/create">
                     <input type="hidden" name="service_id" value="<?= $selectedService->id ?>">
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: end;">
                         <div class="form-group">
                             <label class="form-label">Database Type</label>
                             <select name="type" required class="form-control">
@@ -110,28 +110,10 @@ if ($selectedService) {
                                 <option value="postgresql">PostgreSQL</option>
                                 <option value="mongodb">MongoDB</option>
                             </select>
+                            <small class="text-muted">Database name and credentials will be auto-generated</small>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Database Name</label>
-                            <input type="text" name="db_name"
-                                placeholder="<?= strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $selectedService->name)) ?>_db"
-                                class="form-control" pattern="[a-zA-Z0-9_]+" title="Only letters, numbers and underscore">
-                            <small class="text-muted">Leave empty for auto-generated name</small>
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div class="form-group">
-                            <label class="form-label">Database User</label>
-                            <input type="text" name="db_user"
-                                placeholder="<?= strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $selectedService->name)) ?>_user"
-                                class="form-control" pattern="[a-zA-Z0-9_]+" title="Only letters, numbers and underscore">
-                            <small class="text-muted">Leave empty for auto-generated username</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">&nbsp;</label>
                             <button type="submit" class="btn btn-primary" style="width: 100%;">
                                 <i data-lucide="plus"></i>
                                 Create Database
