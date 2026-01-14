@@ -96,25 +96,23 @@ if ($selectedService) {
                 <form id="createDbForm" method="POST" action="<?= $base_url ?>/databases/create">
                     <input type="hidden" name="service_id" value="<?= $selectedService->id ?>">
 
-                    <div style="display: flex; gap: 20px; align-items: flex-end;">
-                        <div class="form-group" style="flex: 1;">
-                            <label class="form-label">Database Type</label>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div style="flex: 1; max-width: 300px;">
                             <select name="type" required class="form-control">
                                 <option value="">Select database type...</option>
                                 <option value="mariadb">MariaDB (MySQL)</option>
                                 <option value="postgresql">PostgreSQL</option>
                                 <option value="mongodb">MongoDB</option>
                             </select>
-                            <small class="text-muted">Database name and credentials will be auto-generated</small>
                         </div>
 
-                        <div class="form-group" style="flex-shrink: 0;">
-                            <button type="submit" class="btn btn-primary">
-                                <i data-lucide="plus"></i>
-                                Create Database
-                            </button>
-                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="plus"></i>
+                            Create Database
+                        </button>
                     </div>
+                    <small class="text-muted" style="display: block; margin-top: 10px;">Database name, username and password
+                        will be auto-generated</small>
                 </form>
             </div>
         </div>
@@ -217,41 +215,6 @@ if ($selectedService) {
                         </div>
                     </div>
                 </div>
-
-                <!-- Database Users -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">
-                            <i data-lucide="users"></i>
-                            Database Users
-                        </h2>
-                        <button onclick="showAddUserModal()" class="btn btn-sm btn-primary">
-                            <i data-lucide="plus"></i>
-                            Add User
-                        </button>
-                    </div>
-                    <div class="card-body" style="padding: 0;">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Privileges</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <strong><?= htmlspecialchars($database->db_user) ?></strong>
-                                        <span class="badge badge-success" style="margin-left: 5px;">Owner</span>
-                                    </td>
-                                    <td>ALL PRIVILEGES</td>
-                                    <td>-</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
 
             <!-- Sidebar Actions -->
@@ -261,11 +224,30 @@ if ($selectedService) {
                         <h3 class="card-title">Quick Actions</h3>
                     </div>
                     <div class="card-body">
-                        <a href="<?= $base_url ?>/databases/<?= $database->id ?>/adminer" target="_blank"
-                            class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
-                            <i data-lucide="external-link"></i>
-                            Open Adminer
-                        </a>
+                        <?php if ($database->type === 'mongodb'): ?>
+                            <!-- MongoDB - Use Mongo Express -->
+                            <a href="<?= $_ENV['MONGO_EXPRESS_URL'] ?? 'https://mongo-admin.logicdock.cloud' ?>" target="_blank"
+                                class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
+                                <i data-lucide="external-link"></i>
+                                Open Mongo Express
+                            </a>
+                        <?php else: ?>
+                            <!-- MariaDB/PostgreSQL - Use Adminer with SSO -->
+                            <?php
+                            $adminerUrl = $_ENV['ADMINER_URL'] ?? 'https://adminer.logicdock.cloud';
+                            $dbType = $database->type === 'mariadb' ? 'server' : 'pgsql';
+                            $host = $database->container_name;
+                            $dbName = $database->db_name;
+                            $user = $database->db_user;
+                            // Build Adminer auto-login URL
+                            $adminerLink = "{$adminerUrl}/?{$dbType}={$host}&username={$user}&db={$dbName}";
+                            ?>
+                            <a href="<?= htmlspecialchars($adminerLink) ?>" target="_blank" class="btn btn-primary"
+                                style="width: 100%; margin-bottom: 10px;">
+                                <i data-lucide="external-link"></i>
+                                Open Adminer
+                            </a>
+                        <?php endif; ?>
                         <button onclick="resetPassword(<?= $database->id ?>)" class="btn btn-secondary"
                             style="width: 100%; margin-bottom: 10px;">
                             <i data-lucide="key"></i>
@@ -298,47 +280,6 @@ if ($selectedService) {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Add User Modal -->
-        <div id="addUserModal" class="modal" style="display: none;">
-            <div class="modal-backdrop" onclick="hideAddUserModal()"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">Add Database User</h2>
-                    <button onclick="hideAddUserModal()" class="modal-close">
-                        <i data-lucide="x"></i>
-                    </button>
-                </div>
-                <form id="addUserForm" class="modal-body">
-                    <input type="hidden" name="database_id" value="<?= $database->id ?>">
-
-                    <div class="form-group">
-                        <label class="form-label">Username</label>
-                        <input type="text" name="username" placeholder="new_user" class="form-control" required
-                            pattern="[a-zA-Z0-9_]+">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Password</label>
-                        <input type="password" name="password" placeholder="Strong password" class="form-control" required
-                            minlength="8">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Privileges</label>
-                        <select name="privileges" class="form-control">
-                            <option value="ALL">All Privileges</option>
-                            <option value="SELECT,INSERT,UPDATE">Read/Write</option>
-                            <option value="SELECT">Read Only</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">
-                        Create User
-                    </button>
-                </form>
             </div>
         </div>
     <?php endif; ?>
@@ -546,14 +487,6 @@ if ($selectedService) {
         });
     }
 
-    function showAddUserModal() {
-        document.getElementById('addUserModal').style.display = 'flex';
-    }
-
-    function hideAddUserModal() {
-        document.getElementById('addUserModal').style.display = 'none';
-    }
-
     async function deleteDatabase(id, name) {
         if (!confirm('Delete database "' + name + '"? This action cannot be undone and all data will be lost!')) return;
 
@@ -594,32 +527,6 @@ if ($selectedService) {
             alert('Error: ' + error.message);
         }
     }
-
-    // Add user form submit
-    document.getElementById('addUserForm')?.addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData);
-
-        try {
-            const response = await fetch('<?= $base_url ?>/databases/add-user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                alert('User created successfully!');
-                location.reload();
-            } else {
-                alert(result.error || 'Failed to create user');
-            }
-        } catch (error) {
-            alert('Error: ' + error.message);
-        }
-    });
 </script>
 
 <?php

@@ -180,20 +180,10 @@ class DatabaseController extends BaseController
 
         $this->logActivity($user->id, $serviceId, 'database_create', "Created {$type} database: {$dbName}");
 
-        return $this->jsonResponse($response, [
-            'success' => true,
-            'message' => 'Database created successfully',
-            'database' => [
-                'id' => $database->id,
-                'type' => $type,
-                'db_name' => $dbName,
-                'db_user' => $dbUser,
-                'db_password' => $dbPassword, // Only returned once!
-                'host' => $sharedContainerName,
-                'port' => $port,
-                'connection_string' => $this->getConnectionString($type, $sharedContainerName, $dbName, $dbUser, $dbPassword)
-            ]
-        ]);
+        // Redirect back to databases page
+        return $response
+            ->withHeader('Location', '/databases?service=' . $serviceId)
+            ->withStatus(302);
     }
 
     /**
