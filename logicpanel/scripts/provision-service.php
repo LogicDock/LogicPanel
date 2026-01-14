@@ -56,7 +56,7 @@ echo "Status: {$service->status}\n";
 echo "Container ID: " . ($service->container_id ?? 'None') . "\n\n";
 
 // Get primary domain
-$domain = $capsule::table('lp_domains')
+$domain = $capsule::table('domains')
     ->where('service_id', $serviceId)
     ->where('is_primary', true)
     ->first();
@@ -105,7 +105,7 @@ echo "Creating new container...\n";
 
 // Build environment variables
 $envVars = [];
-$packageData = $capsule::table('lp_packages')->where('id', $service->package_id)->first();
+$packageData = $capsule::table('packages')->where('id', $service->package_id)->first();
 
 // Create container
 try {
