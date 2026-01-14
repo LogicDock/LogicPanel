@@ -33,10 +33,10 @@ class GitController extends BaseController
         $service = Service::where('id', $serviceId)
             ->where('user_id', $user->id)
             ->with([
-                'deployments' => function ($q) {
-                    $q->orderBy('created_at', 'desc')->limit(10);
-                }
-            ])
+                    'deployments' => function ($q) {
+                        $q->orderBy('created_at', 'desc')->limit(10);
+                    }
+                ])
             ->first();
 
         if (!$service) {
@@ -236,11 +236,11 @@ class GitController extends BaseController
         // Step 2: Clone/Pull repository
         $updateLog('Cloning repository from ' . $service->github_repo . ' (branch: ' . $service->github_branch . ')');
 
-        // Remove existing files and clone
+        // Remove existing files and clone (install git first for alpine)
         $cloneCmd = [
             'sh',
             '-c',
-            "cd /app && rm -rf .* * 2>/dev/null; git clone --branch {$service->github_branch} --single-branch --depth 1 '{$repoUrl}' . 2>&1"
+            "apk add --no-cache git 2>/dev/null || apt-get install -y git 2>/dev/null || true; cd /app && rm -rf .* * 2>/dev/null; git clone --branch {$service->github_branch} --single-branch --depth 1 '{$repoUrl}' . 2>&1"
         ];
 
         $cloneOutput = $this->docker->execInContainer($service->container_id, $cloneCmd);

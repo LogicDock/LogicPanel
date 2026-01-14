@@ -284,6 +284,10 @@ class DockerService
         $port = $config['port'] ?? 3000;
         $envVars = $config['env'] ?? [];
 
+        // Pull Node.js image first
+        $image = "node:{$nodeVersion}-alpine";
+        $this->pullImage($image);
+
         // Create volume for app data
         $volumeName = "lp_{$appName}_data";
         $this->createVolume($volumeName, ['logicpanel.app' => $appName]);
@@ -343,6 +347,22 @@ class DockerService
 
         $containerName = "lp_{$appName}_{$type}";
         $volumeName = "lp_{$appName}_{$type}_data";
+
+        // Determine image based on type and pull it
+        $imageMap = [
+            'mariadb' => 'mariadb:10.11',
+            'postgresql' => 'postgres:16-alpine',
+            'mongodb' => 'mongo:7'
+        ];
+
+        $image = $imageMap[$type] ?? null;
+        if (!$image) {
+            $this->lastError = 'Invalid database type';
+            return null;
+        }
+
+        // Pull image first
+        $this->pullImage($image);
 
         // Create volume
         $this->createVolume($volumeName);
