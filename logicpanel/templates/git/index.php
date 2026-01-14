@@ -536,8 +536,7 @@ ob_start();
     async function deploy() {
         if (isDeploying) return;
 
-        if (!confirm('Start deployment now?')) return;
-
+        // No confirmation needed - start immediately
         isDeploying = true;
         const btn = document.getElementById('deployBtn');
         btn.disabled = true;
@@ -548,9 +547,17 @@ ob_start();
         logs.innerHTML = '<p class="log-warning">Starting deployment...</p>';
 
         try {
-            const response = await fetch(`<?= $base_url ?>/git/${serviceId}/deploy`, {
-                method: 'POST'
+            const response = await fetch(`<?= $base_url ?? '' ?>/git/${serviceId}/deploy`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
             });
+
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error('Server returned non-JSON response. Status: ' + response.status);
+            }
 
             const data = await response.json();
 

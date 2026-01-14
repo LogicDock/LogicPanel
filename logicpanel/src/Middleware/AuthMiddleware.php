@@ -61,9 +61,13 @@ class AuthMiddleware implements MiddlewareInterface
     {
         $response = new SlimResponse();
 
-        // Check if it's an AJAX request
-        if ($request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
-            $response->getBody()->write(json_encode(['error' => 'Unauthorized', 'redirect' => '/login']));
+        // Check if it's an AJAX/fetch request (check multiple indicators)
+        $isAjax = $request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest';
+        $acceptsJson = strpos($request->getHeaderLine('Accept'), 'application/json') !== false;
+        $contentTypeJson = strpos($request->getHeaderLine('Content-Type'), 'application/json') !== false;
+
+        if ($isAjax || $acceptsJson || $contentTypeJson) {
+            $response->getBody()->write(json_encode(['success' => false, 'error' => 'Unauthorized', 'redirect' => '/login']));
             return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
         }
 
