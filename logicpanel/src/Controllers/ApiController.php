@@ -86,8 +86,13 @@ class ApiController extends BaseController
             }
         }
 
-        // Find or create user
+        // Find or create user - check by whmcs_user_id OR email
         $user = User::where('whmcs_user_id', $data['whmcs_user_id'])->first();
+
+        if (!$user) {
+            // Also check by email
+            $user = User::where('email', $data['email'])->first();
+        }
 
         if (!$user) {
             // Create new user
@@ -101,9 +106,15 @@ class ApiController extends BaseController
             $user->role = 'user';
             $user->is_active = true;
             $user->save();
-        } elseif (!empty($data['password'])) {
-            // Update existing user's password if provided
-            $user->password = $data['password'];
+        } else {
+            // Update existing user's whmcs_user_id if not set
+            if (!$user->whmcs_user_id) {
+                $user->whmcs_user_id = $data['whmcs_user_id'];
+            }
+            // Update password if provided
+            if (!empty($data['password'])) {
+                $user->password = $data['password'];
+            }
             $user->save();
         }
 

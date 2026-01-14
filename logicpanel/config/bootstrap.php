@@ -10,6 +10,8 @@ use DI\Container;
 use Slim\Factory\AppFactory;
 use Slim\Views\PhpRenderer;
 use Illuminate\Database\Capsule\Manager as Capsule;
+use Psr\Http\Message\ServerRequestInterface;
+use Slim\Exception\HttpException;
 
 // Create Container
 $container = new Container();
@@ -56,12 +58,47 @@ $app = AppFactory::create();
 // Set base path for subdirectory installation
 $app->setBasePath('');
 
-// Add Error Middleware
-$errorMiddleware = $app->addErrorMiddleware(
-    $_ENV['APP_DEBUG'] === 'true',
-    true,
-    true
-);
+// Check debug mode properly
+$isDebug = filter_var($_ENV['APP_DEBUG'] ?? 'false', FILTER_VALIDATE_BOOLEAN);
+
+// Add Error Middleware with custom handler for API
+$errorMiddleware = $app->addErrorMiddleware($isDebug, true, true);
+
+// Custom error handler for JSON responses (API routes)
+$errorMiddleware->setDefaultErrorHandler(function (ServerRequestInterface $request, \Throwable $exception, bool $displayErrorDetails, bool $logErrors, bool $logErrorDetails) use ($app) {
+    $response = $app->getResponseFactory()->createResponse();
+    $uri = $request->getUri()->getPath();
+
+    // For API routes, always return JSON
+    if (strpos($uri, '/api/') !== false) {
+        $error = [
+            'success' => false,
+            'error' => $exception->getMessage(),
+        ];
+
+        if ($displayErrorDetails) {
+            $error['trace'] = $exception->getTraceAsString();
+            $error['file'] = $exception->getFile();
+            $error['line'] = $exception->getLine();
+        }
+
+        $response->getBody()->write(json_encode($error));
+        $statusCode = $exception instanceof HttpException ? $exception->getCode() : 500;
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus($statusCode ?: 500);
+    }
+
+    // For web routes, show HTML error
+    $response->getBody()->write('<html><body>');
+    $response->getBody()->write('<h1>Error</h1>');
+    $response->getBody()->write('<p>' . htmlspecialchars($exception->getMessage()) . '</p>');
+    if ($displayErrorDetails) {
+        $response->getBody()->write('<pre>' . htmlspecialchars($exception->getTraceAsString()) . '</pre>');
+    }
+    $response->getBody()->write('</body></html>');
+    return $response->withStatus(500);
+});
 
 // Add Body Parsing Middleware
 $app->addBodyParsingMiddleware();
@@ -77,3 +114,4 @@ require BASE_PATH . '/config/routes.php';
 
 // Run App
 $app->run();
+
