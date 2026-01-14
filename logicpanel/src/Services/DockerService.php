@@ -488,7 +488,7 @@ class DockerService
     }
 
     /**
-     * Request via Unix socket
+     * Request via Unix socket using curl
      */
     private function requestUnixSocket(
         string $method,
@@ -504,33 +504,35 @@ class DockerService
             return null;
         }
 
-        $headers = ["Host: localhost", "Content-Type: {$contentType}"];
-        $body = $rawBody ?? ($data ? json_encode($data) : '');
+        $ch = curl_init();
 
-        if (strlen($body) > 0) {
-            $headers[] = 'Content-Length: ' . strlen($body);
+        // Use Unix socket
+        curl_setopt($ch, CURLOPT_UNIX_SOCKET_PATH, $socket);
+        curl_setopt($ch, CURLOPT_URL, "http://localhost" . $endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+
+        $body = $rawBody ?? ($data ? json_encode($data) : null);
+        if ($body !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Content-Type: {$contentType}",
+                'Content-Length: ' . strlen($body)
+            ]);
         }
 
-        $request = "{$method} {$endpoint} HTTP/1.1\r\n";
-        $request .= implode("\r\n", $headers) . "\r\n\r\n";
-        $request .= $body;
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
 
-        $fp = @fsockopen("unix://{$socket}", -1, $errno, $errstr, $timeout);
-        if (!$fp) {
-            $this->lastError = "Failed to open socket: {$errstr} ({$errno})";
+        if ($error) {
+            $this->lastError = "cURL error: {$error}";
             return null;
         }
 
-        fwrite($fp, $request);
-        $response = '';
-        stream_set_timeout($fp, $timeout);
-
-        while (!feof($fp)) {
-            $response .= fgets($fp, 4096);
-        }
-        fclose($fp);
-
-        return $this->parseHttpResponse($response);
+        return ['status' => $httpCode, 'body' => $response];
     }
 
     /**
