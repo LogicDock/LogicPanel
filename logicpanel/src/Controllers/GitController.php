@@ -274,16 +274,28 @@ class GitController extends BaseController
             $updateLog('Build completed');
         }
 
-        // Step 5: Restart container to apply changes
+        // Step 5: Start the application process
         $deployment->status = 'starting';
-        $updateLog('Restarting application...');
+        $startCommand = $service->start_cmd ?: 'npm start';
+        $updateLog('Starting application: ' . $startCommand);
 
-        $this->docker->restartContainer($service->container_id);
+        // Kill any existing node processes first
+        $killCmd = ['sh', '-c', 'pkill -f "node" 2>/dev/null || true'];
+        $this->docker->execInContainer($service->container_id, $killCmd);
 
-        // Wait a bit for container to start
+        sleep(1);
+
+        // Start the app in background using nohup
+        // Using sh -c with nohup to run in background
+        $appStartCmd = ['sh', '-c', "cd /app && nohup sh -c '{$startCommand}' > /app/app.log 2>&1 &"];
+        $this->docker->execInContainer($service->container_id, $appStartCmd);
+
+        $updateLog('Application start command executed');
+
+        // Wait a bit for app to start
         sleep(3);
 
-        // Verify container is running
+        // Verify container is still running
         $info = $this->docker->inspectContainer($service->container_id);
         if ($info && ($info['State']['Running'] ?? false)) {
             $deployment->status = 'completed';
@@ -291,7 +303,7 @@ class GitController extends BaseController
             $service->status = 'running';
             $service->save();
         } else {
-            throw new \Exception('Container failed to start after deployment');
+            throw new \Exception('Container stopped unexpectedly');
         }
 
         $deployment->completed_at = date('Y-m-d H:i:s');

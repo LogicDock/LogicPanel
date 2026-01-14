@@ -304,6 +304,8 @@ class DockerService
         $containerConfig = [
             'Image' => "node:{$nodeVersion}-alpine",
             'Env' => $env,
+            'Cmd' => ['sh', '-c', 'tail -f /dev/null'],  // Keep container running
+            'Tty' => true,
             'ExposedPorts' => [
                 "{$port}/tcp" => (object) []
             ],

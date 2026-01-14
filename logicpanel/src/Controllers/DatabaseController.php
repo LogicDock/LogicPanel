@@ -164,6 +164,9 @@ class DatabaseController extends BaseController
         $database->status = 'running';
         $database->save();
 
+        // Auto-inject database env vars to service container
+        $this->injectDatabaseEnvVars($service, $database, $dbPassword);
+
         $this->logActivity($user->id, $serviceId, 'database_create', "Created {$type} database: {$dbName}");
 
         return $this->jsonResponse($response, [
@@ -180,6 +183,65 @@ class DatabaseController extends BaseController
                 'connection_string' => $this->getConnectionString($type, $containerName, $dbName, $dbUser, $dbPassword)
             ]
         ]);
+    }
+
+    /**
+     * Auto-inject database credentials into service's env vars
+     */
+    private function injectDatabaseEnvVars(Service $service, Database $database, string $password): void
+    {
+        // Get current env vars
+        $envVars = [];
+        if (!empty($service->env_vars)) {
+            $envVars = is_string($service->env_vars) ? json_decode($service->env_vars, true) : $service->env_vars;
+        }
+        if (!is_array($envVars)) {
+            $envVars = [];
+        }
+
+        $containerName = $database->container_name;
+        $port = $this->getDefaultPort($database->type);
+
+        // Add individual env vars based on database type
+        $prefix = strtoupper($database->type);
+        if ($database->type === 'mariadb') {
+            $prefix = 'MYSQL';
+        } elseif ($database->type === 'postgresql') {
+            $prefix = 'POSTGRES';
+        } elseif ($database->type === 'mongodb') {
+            $prefix = 'MONGO';
+        }
+
+        // Individual variables format
+        $envVars["DB_HOST"] = $containerName;
+        $envVars["DB_PORT"] = (string) $port;
+        $envVars["DB_NAME"] = $database->db_name;
+        $envVars["DB_USER"] = $database->db_user;
+        $envVars["DB_PASSWORD"] = $password;
+
+        // Type-specific prefix
+        $envVars["{$prefix}_HOST"] = $containerName;
+        $envVars["{$prefix}_PORT"] = (string) $port;
+        $envVars["{$prefix}_DATABASE"] = $database->db_name;
+        $envVars["{$prefix}_USER"] = $database->db_user;
+        $envVars["{$prefix}_PASSWORD"] = $password;
+
+        // Connection string format (DATABASE_URL)
+        $connectionString = $this->getConnectionString($database->type, $containerName, $database->db_name, $database->db_user, $password);
+        $envVars["DATABASE_URL"] = $connectionString;
+
+        // Type-specific connection string
+        $envVars["{$prefix}_URL"] = $connectionString;
+
+        // Update service env vars
+        $service->env_vars = json_encode($envVars);
+        $service->save();
+
+        // Restart service container to apply new env vars (if running)
+        if ($service->container_id && $service->status === 'running') {
+            // Note: For env vars to take effect, container needs to be recreated
+            // For now, just update the stored vars - user can restart manually
+        }
     }
 
     /**
