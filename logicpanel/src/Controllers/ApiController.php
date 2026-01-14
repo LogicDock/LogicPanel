@@ -94,11 +94,16 @@ class ApiController extends BaseController
             $user = new User();
             $user->whmcs_user_id = $data['whmcs_user_id'];
             $user->email = $data['email'];
-            $user->username = $data['username'] ?? 'user_' . $data['whmcs_user_id'];
-            $user->password = bin2hex(random_bytes(16));
+            $user->username = $data['username'] ?? $data['email'];
+            // Use password from WHMCS if provided, otherwise generate random
+            $user->password = $data['password'] ?? bin2hex(random_bytes(16));
             $user->name = $data['name'] ?? $data['username'] ?? 'User';
             $user->role = 'user';
             $user->is_active = true;
+            $user->save();
+        } elseif (!empty($data['password'])) {
+            // Update existing user's password if provided
+            $user->password = $data['password'];
             $user->save();
         }
 

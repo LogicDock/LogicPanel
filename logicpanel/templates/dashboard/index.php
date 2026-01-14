@@ -124,13 +124,13 @@ ob_start();
                                 <div class="tool-icon">
                                     <i data-lucide="terminal"></i>
                                 </div>
-                                <span class="tool-name"><?= htmlspecialchars($service->name) ?> Terminal</span>
+                                <span class="tool-name">Terminal</span>
                             </a>
                             <a href="<?= $base_url ?>/git/<?= $service->id ?>" class="tool-item">
                                 <div class="tool-icon">
                                     <i data-lucide="git-branch"></i>
                                 </div>
-                                <span class="tool-name"><?= htmlspecialchars($service->name) ?> Git</span>
+                                <span class="tool-name">Git Deploy</span>
                             </a>
                         <?php endforeach; ?>
                     <?php else: ?>

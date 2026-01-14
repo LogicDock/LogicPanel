@@ -79,7 +79,7 @@ if ($selectedService) {
 
                 <span class="text-muted" style="font-size: 12px;">
                     <i data-lucide="info" style="width: 14px; height: 14px;"></i>
-                    প্রতি service এ ১টা database তৈরি করতে পারবেন
+                    Each service can have 1 database
                 </span>
             </div>
         </div>

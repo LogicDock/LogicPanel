@@ -78,11 +78,15 @@ function logicpanel_ConfigOptions()
 function logicpanel_CreateAccount(array $params)
 {
     try {
+        // Generate a secure random password for the user
+        $generatedPassword = bin2hex(random_bytes(8)); // 16 character hex password
+
         $postData = [
             'whmcs_user_id' => $params['userid'],
             'whmcs_service_id' => $params['serviceid'],
             'email' => $params['clientsdetails']['email'],
             'username' => $params['clientsdetails']['email'],
+            'password' => $generatedPassword, // Send real password to LogicPanel
             'name' => $params['clientsdetails']['firstname'] . ' ' . $params['clientsdetails']['lastname'],
             'domain' => $params['domain'],
             'package' => $params['configoption1'], // Package name
@@ -93,13 +97,13 @@ function logicpanel_CreateAccount(array $params)
         $response = logicpanel_apiCall($params, 'POST', '/api/v1/account/create', $postData);
 
         if ($response['success']) {
-            // Store service ID in custom field
+            // Store username and password in WHMCS (password is encrypted by WHMCS)
             Capsule::table('tblhosting')
                 ->where('id', $params['serviceid'])
                 ->update([
-                    'username' => 'lp_' . $response['service_id'],
-                    'password' => encrypt('sso_enabled'),
-                ]);
+                        'username' => $params['clientsdetails']['email'], // Use email as username
+                        'password' => encrypt($generatedPassword), // Store actual password encrypted
+                    ]);
 
             return 'success';
         } else {
@@ -478,9 +482,9 @@ function logicpanel_getPackages(): array
                 Capsule::table('tblconfiguration')
                     ->where('setting', $cacheKey)
                     ->update([
-                        'value' => json_encode($packages),
-                        'updated_at' => $now
-                    ]);
+                            'value' => json_encode($packages),
+                            'updated_at' => $now
+                        ]);
             } else {
                 Capsule::table('tblconfiguration')->insert([
                     'setting' => $cacheKey,
