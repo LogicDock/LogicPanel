@@ -404,6 +404,7 @@ if ($selectedService) {
         gap: 8px;
         font-size: 13px;
         font-weight: 500;
+        flex-wrap: wrap;
     }
 
     .db-info-value code {
@@ -411,6 +412,10 @@ if ($selectedService) {
         padding: 2px 6px;
         border-radius: 3px;
         font-size: 12px;
+        word-break: break-all;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .copy-btn {

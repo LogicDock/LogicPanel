@@ -338,6 +338,14 @@ class DatabaseController extends BaseController
 
         $result = $this->docker->execInContainer($containerName, $cmd);
 
+        // Check if command failed
+        if ($result === null || (is_string($result) && stripos($result, 'error') !== false)) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Failed to create user: ' . ($result ?? 'Container command failed')
+            ], 500);
+        }
+
         $this->logActivity($user->id, $database->service_id, 'database_user_add', "Added user {$username} to {$database->db_name}");
 
         return $this->jsonResponse($response, [
@@ -378,6 +386,14 @@ class DatabaseController extends BaseController
         }
 
         $result = $this->docker->execInContainer($containerName, $cmd);
+
+        // Check if command failed
+        if ($result === null || (is_string($result) && stripos($result, 'error') !== false)) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Failed to reset password: ' . ($result ?? 'Container command failed')
+            ], 500);
+        }
 
         // Update in our database
         $database->db_password = $this->encrypt($newPassword);
