@@ -4,95 +4,481 @@ $current_page = 'files';
 ob_start();
 ?>
 
-<!-- Header -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <div class="flex items-center gap-3">
-        <a href="<?= $base_url ?>/services/<?= $service->id ?>"
-            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-left">
+        <a href="<?= $base_url ?>/services/<?= $service->id ?>" class="back-btn">
+            <i data-lucide="arrow-left"></i>
         </a>
-        <div>
-            <h1 class="text-xl sm:text-2xl font-bold">File Manager</h1>
-            <p class="text-sm text-[var(--text-secondary)]">
-                <?= htmlspecialchars($service->name) ?>
-            </p>
+        <div class="page-header-info">
+            <h1 class="page-title">File Manager</h1>
+            <p class="page-subtitle"><?= htmlspecialchars($service->name) ?></p>
         </div>
     </div>
-
-    <div class="flex items-center gap-2">
-        <button onclick="createFolder()"
-            class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors">
-            <i data-lucide="folder-plus" class="w-4 h-4"></i>
-            <span class="hidden sm:inline">New Folder</span>
+    <div class="page-header-actions">
+        <button onclick="createFolder()" class="btn btn-secondary">
+            <i data-lucide="folder-plus"></i> New Folder
         </button>
-        <label
-            class="flex items-center gap-2 px-3 py-2 text-sm bg-primary-500 hover:bg-primary-600 text-white rounded-lg cursor-pointer transition-colors">
-            <i data-lucide="upload" class="w-4 h-4"></i>
-            <span class="hidden sm:inline">Upload</span>
-            <input type="file" id="fileUpload" class="hidden" onchange="uploadFile(event)" multiple>
+        <label class="btn btn-primary upload-btn">
+            <i data-lucide="upload"></i> Upload
+            <input type="file" id="fileUpload" class="hidden-input" onchange="uploadFile(event)" multiple>
         </label>
     </div>
 </div>
 
 <!-- Breadcrumb -->
-<div class="card rounded-xl p-3 mb-4 overflow-x-auto">
-    <div id="breadcrumb" class="flex items-center gap-1 text-sm whitespace-nowrap">
-        <button onclick="navigateTo('/app')"
-            class="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
-            <i data-lucide="home" class="w-4 h-4"></i>
+<div class="breadcrumb-card">
+    <div id="breadcrumb" class="breadcrumb">
+        <button onclick="navigateTo('/app')" class="breadcrumb-item">
+            <i data-lucide="home"></i>
             <span>app</span>
         </button>
     </div>
 </div>
 
 <!-- File List -->
-<div class="card rounded-xl overflow-hidden">
+<div class="card file-list-card">
     <!-- Table Header -->
-    <div
-        class="hidden sm:grid grid-cols-12 gap-4 px-4 py-3 bg-[var(--bg-secondary)] border-b border-[var(--border-color)] text-sm font-medium text-[var(--text-secondary)]">
-        <div class="col-span-6">Name</div>
-        <div class="col-span-2">Size</div>
-        <div class="col-span-2">Modified</div>
-        <div class="col-span-2 text-right">Actions</div>
+    <div class="file-list-header">
+        <div class="col-name">Name</div>
+        <div class="col-size">Size</div>
+        <div class="col-modified">Modified</div>
+        <div class="col-actions">Actions</div>
     </div>
 
     <!-- File List Container -->
-    <div id="fileList" class="divide-y divide-[var(--border-color)]">
-        <div class="p-8 text-center text-[var(--text-secondary)]">
-            <i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin"></i>
+    <div id="fileList" class="file-list">
+        <div class="loading-state">
+            <i data-lucide="loader-2" class="spin"></i>
             <p>Loading files...</p>
         </div>
     </div>
 </div>
 
 <!-- File Editor Modal -->
-<div id="editorModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/50" onclick="closeEditor()"></div>
-    <div class="absolute inset-4 sm:inset-8 lg:inset-16 bg-[var(--bg-primary)] rounded-2xl shadow-2xl flex flex-col">
+<div id="editorModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeEditor()"></div>
+    <div class="modal-content editor-modal">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--border-color)]">
-            <div class="flex items-center gap-3 min-w-0">
-                <i data-lucide="file-text" class="w-5 h-5 text-[var(--text-secondary)] flex-shrink-0"></i>
-                <span id="editorFileName" class="font-medium truncate"></span>
+        <div class="modal-header">
+            <div class="modal-title">
+                <i data-lucide="file-text"></i>
+                <span id="editorFileName"></span>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="saveFile()"
-                    class="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors">
-                    <i data-lucide="save" class="w-4 h-4"></i>
-                    <span class="hidden sm:inline">Save</span>
+            <div class="modal-actions">
+                <button onclick="saveFile()" class="btn btn-primary">
+                    <i data-lucide="save"></i> Save
                 </button>
-                <button onclick="closeEditor()"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                    <i data-lucide="x" class="w-5 h-5"></i>
+                <button onclick="closeEditor()" class="btn btn-icon">
+                    <i data-lucide="x"></i>
                 </button>
             </div>
         </div>
 
         <!-- Editor -->
-        <textarea id="fileEditor"
-            class="flex-1 p-4 bg-gray-950 text-gray-200 font-mono text-sm resize-none outline-none"></textarea>
+        <textarea id="fileEditor" class="code-editor"></textarea>
     </div>
 </div>
+
+<style>
+    /* Page Header */
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .page-header-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .back-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--border-radius);
+        color: var(--text-secondary);
+        transition: all 0.15s ease;
+    }
+
+    .back-btn:hover {
+        background: var(--bg-input);
+        color: var(--text-primary);
+        text-decoration: none;
+    }
+
+    .back-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .page-header-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .page-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .page-subtitle {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .page-header-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .upload-btn {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .hidden-input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* Breadcrumb */
+    .breadcrumb-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        overflow-x: auto;
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+
+    .breadcrumb-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .breadcrumb-item:hover {
+        background: var(--bg-input);
+    }
+
+    .breadcrumb-item svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .breadcrumb-separator {
+        color: var(--text-muted);
+        width: 16px;
+        height: 16px;
+    }
+
+    /* File List */
+    .file-list-card {
+        overflow: hidden;
+    }
+
+    .file-list-header {
+        display: grid;
+        grid-template-columns: 1fr 100px 150px 120px;
+        gap: 16px;
+        padding: 12px 16px;
+        background: var(--bg-input);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+
+    .col-actions {
+        text-align: right;
+    }
+
+    .file-list {
+        min-height: 300px;
+    }
+
+    .file-row {
+        display: grid;
+        grid-template-columns: 1fr 100px 150px 120px;
+        gap: 16px;
+        padding: 12px 16px;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.15s ease;
+    }
+
+    .file-row:last-child {
+        border-bottom: none;
+    }
+
+    .file-row:hover {
+        background: var(--bg-input);
+    }
+
+    .file-row:hover .file-actions {
+        opacity: 1;
+    }
+
+    .file-name {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .file-name svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+    }
+
+    .file-name .folder-icon {
+        color: #f59e0b;
+    }
+
+    .file-name .file-icon {
+        color: #3b82f6;
+    }
+
+    .file-name button,
+    .file-name span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    .file-name button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-primary);
+        padding: 0;
+        text-align: left;
+    }
+
+    .file-name button:hover {
+        color: var(--primary);
+    }
+
+    .file-size,
+    .file-modified {
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .file-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+
+    .file-actions .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .file-actions .btn-icon:hover {
+        background: var(--bg-input);
+        color: var(--text-primary);
+    }
+
+    .file-actions .btn-icon.delete:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .file-actions .btn-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* States */
+    .loading-state,
+    .empty-state,
+    .error-state {
+        padding: 60px 20px;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+
+    .loading-state svg,
+    .empty-state svg {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 12px;
+        opacity: 0.5;
+    }
+
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .error-state {
+        color: #ef4444;
+    }
+
+    /* Modal */
+    .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.hidden {
+        display: none;
+    }
+
+    .modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-content {
+        position: relative;
+        background: var(--bg-card);
+        border-radius: 12px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        max-width: 95vw;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .editor-modal {
+        width: 900px;
+        height: 80vh;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        min-width: 0;
+    }
+
+    .modal-title svg {
+        width: 18px;
+        height: 18px;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+    }
+
+    .modal-title span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .code-editor {
+        flex: 1;
+        padding: 16px;
+        background: #0d1117;
+        color: #c9d1d9;
+        border: none;
+        resize: none;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        outline: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .file-list-header {
+            display: none;
+        }
+
+        .file-row {
+            grid-template-columns: 1fr auto;
+        }
+
+        .file-size,
+        .file-modified {
+            display: none;
+        }
+
+        .file-actions {
+            opacity: 1;
+        }
+
+        .editor-modal {
+            width: 95vw;
+            height: 85vh;
+        }
+    }
+</style>
 
 <script>
     const serviceId = <?= $service->id ?>;
@@ -105,9 +491,9 @@ ob_start();
 
         const container = document.getElementById('fileList');
         container.innerHTML = `
-        <div class="p-8 text-center text-[var(--text-secondary)]">
-            <i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin"></i>
-            <p>Loading...</p>
+        <div class="loading-state">
+            <i data-lucide="loader-2" class="spin"></i>
+            <p>Loading files...</p>
         </div>
     `;
         lucide.createIcons();
@@ -119,20 +505,20 @@ ob_start();
             if (data.success) {
                 renderFiles(data.files, path);
             } else {
-                container.innerHTML = `<div class="p-8 text-center text-red-500">${data.error || 'Failed to load files'}</div>`;
+                container.innerHTML = `<div class="error-state">${data.error || 'Failed to load files'}</div>`;
             }
         } catch (error) {
-            container.innerHTML = `<div class="p-8 text-center text-red-500">Error: ${error.message}</div>`;
+            container.innerHTML = `<div class="error-state">Error: ${error.message}</div>`;
         }
     }
 
     function renderFiles(files, path) {
         const container = document.getElementById('fileList');
 
-        if (files.length === 0) {
+        if (files.length === 0 && path === '/app') {
             container.innerHTML = `
-            <div class="p-8 text-center text-[var(--text-secondary)]">
-                <i data-lucide="folder-open" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+            <div class="empty-state">
+                <i data-lucide="folder-open"></i>
                 <p>This folder is empty</p>
             </div>
         `;
@@ -140,16 +526,20 @@ ob_start();
             return;
         }
 
-        // Add parent directory link if not in root
         let html = '';
+
+        // Add parent directory link if not in root
         if (path !== '/app') {
             const parentPath = path.split('/').slice(0, -1).join('/') || '/app';
             html += `
-            <div class="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-[var(--bg-secondary)] cursor-pointer transition-colors" onclick="navigateTo('${parentPath}')">
-                <div class="col-span-12 sm:col-span-6 flex items-center gap-3">
-                    <i data-lucide="folder-up" class="w-5 h-5 text-yellow-500"></i>
-                    <span class="font-medium">..</span>
+            <div class="file-row" onclick="navigateTo('${parentPath}')" style="cursor: pointer;">
+                <div class="file-name">
+                    <i data-lucide="folder-up" class="folder-icon"></i>
+                    <span>..</span>
                 </div>
+                <div class="file-size">-</div>
+                <div class="file-modified">-</div>
+                <div class="file-actions"></div>
             </div>
         `;
         }
@@ -157,34 +547,30 @@ ob_start();
         files.forEach(file => {
             const isDir = file.type === 'directory';
             const icon = isDir ? 'folder' : getFileIcon(file.name);
-            const iconColor = isDir ? 'text-yellow-500' : 'text-blue-500';
+            const iconClass = isDir ? 'folder-icon' : 'file-icon';
 
             html += `
-            <div class="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors group">
-                <div class="col-span-12 sm:col-span-6 flex items-center gap-3 min-w-0">
-                    <i data-lucide="${icon}" class="w-5 h-5 ${iconColor} flex-shrink-0"></i>
+            <div class="file-row">
+                <div class="file-name">
+                    <i data-lucide="${icon}" class="${iconClass}"></i>
                     ${isDir
-                    ? `<button onclick="navigateTo('${file.path}')" class="font-medium truncate text-left hover:text-primary-500">${escapeHtml(file.name)}</button>`
-                    : `<span class="font-medium truncate">${escapeHtml(file.name)}</span>`
+                    ? `<button onclick="navigateTo('${file.path}')">${escapeHtml(file.name)}</button>`
+                    : `<span>${escapeHtml(file.name)}</span>`
                 }
                 </div>
-                <div class="hidden sm:block col-span-2 text-sm text-[var(--text-secondary)]">
-                    ${isDir ? '-' : file.size_human}
-                </div>
-                <div class="hidden sm:block col-span-2 text-sm text-[var(--text-secondary)]">
-                    ${file.modified}
-                </div>
-                <div class="col-span-12 sm:col-span-2 flex items-center justify-end gap-1 mt-2 sm:mt-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="file-size">${isDir ? '-' : (file.size_human || '-')}</div>
+                <div class="file-modified">${file.modified || '-'}</div>
+                <div class="file-actions">
                     ${!isDir ? `
-                        <button onclick="editFile('${file.path}')" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Edit">
-                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        <button onclick="editFile('${file.path}')" class="btn-icon" title="Edit">
+                            <i data-lucide="edit-2"></i>
                         </button>
-                        <button onclick="downloadFile('${file.path}')" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded" title="Download">
-                            <i data-lucide="download" class="w-4 h-4"></i>
+                        <button onclick="downloadFile('${file.path}')" class="btn-icon" title="Download">
+                            <i data-lucide="download"></i>
                         </button>
                     ` : ''}
-                    <button onclick="deleteItem('${file.path}')" class="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded" title="Delete">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    <button onclick="deleteItem('${file.path}')" class="btn-icon delete" title="Delete">
+                        <i data-lucide="trash-2"></i>
                     </button>
                 </div>
             </div>
@@ -198,8 +584,8 @@ ob_start();
     function updateBreadcrumb(path) {
         const parts = path.split('/').filter(p => p);
         let html = `
-        <button onclick="navigateTo('/app')" class="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
-            <i data-lucide="home" class="w-4 h-4"></i>
+        <button onclick="navigateTo('/app')" class="breadcrumb-item">
+            <i data-lucide="home"></i>
             <span>app</span>
         </button>
     `;
@@ -209,8 +595,8 @@ ob_start();
             if (i === 0) return; // Skip 'app'
             currentBreadcrumbPath += '/' + part;
             html += `
-            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>
-            <button onclick="navigateTo('/app${currentBreadcrumbPath}')" class="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
+            <i data-lucide="chevron-right" class="breadcrumb-separator"></i>
+            <button onclick="navigateTo('/app${currentBreadcrumbPath}')" class="breadcrumb-item">
                 ${escapeHtml(part)}
             </button>
         `;
