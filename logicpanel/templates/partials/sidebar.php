@@ -11,6 +11,25 @@
             <span>Tools</span>
         </a>
 
+        <?php if (in_array($_SESSION['user_role'] ?? '', ['admin', 'reseller'])): ?>
+            <div class="sidebar-nav-section">Reseller</div>
+            <a href="<?= $base_url ?? '' ?>/reseller"
+                class="sidebar-nav-link <?= ($current_page ?? '') === 'reseller' ? 'active' : '' ?>">
+                <i data-lucide="briefcase"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="<?= $base_url ?? '' ?>/reseller/users"
+                class="sidebar-nav-link <?= in_array($current_page ?? '', ['reseller_users']) ? 'active' : '' ?>">
+                <i data-lucide="users"></i>
+                <span>My Users</span>
+            </a>
+            <a href="<?= $base_url ?? '' ?>/reseller/packages"
+                class="sidebar-nav-link <?= ($current_page ?? '') === 'reseller_packages' ? 'active' : '' ?>">
+                <i data-lucide="package"></i>
+                <span>My Packages</span>
+            </a>
+        <?php endif; ?>
+
         <?php if (($_SESSION['user_role'] ?? '') === 'admin'): ?>
             <div class="sidebar-nav-section">Admin</div>
             <a href="<?= $base_url ?? '' ?>/admin"
@@ -23,11 +42,16 @@
                 <i data-lucide="package"></i>
                 <span>Packages</span>
             </a>
-                <a href="<?= $base_url ?? '' ?>/admin/api-keys"
-                    class="sidebar-nav-link <?= ($current_page ?? '') === 'apikeys' ? 'active' : '' ?>">
-                    <i data-lucide="key"></i>
-                    <span>API Keys</span>
-                </a>
+            <a href="<?= $base_url ?? '' ?>/admin/reseller-packages"
+                class="sidebar-nav-link <?= ($current_page ?? '') === 'reseller_packages_admin' ? 'active' : '' ?>">
+                <i data-lucide="layers"></i>
+                <span>Reseller Plans</span>
+            </a>
+            <a href="<?= $base_url ?? '' ?>/admin/api-keys"
+                class="sidebar-nav-link <?= ($current_page ?? '') === 'apikeys' ? 'active' : '' ?>">
+                <i data-lucide="key"></i>
+                <span>API Keys</span>
+            </a>
         <?php endif; ?>
     </nav>
 

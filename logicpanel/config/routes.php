@@ -155,6 +155,40 @@ $app->group('/api/v1', function (RouteCollectorProxy $api) {
 $app->get('/api/packages', [ApiController::class, 'listPackages']);
 
 // ============================================
+// Reseller Routes (Admin + Reseller only)
+// ============================================
+
+use LogicPanel\Controllers\ResellerController;
+
+$app->group('/reseller', function (RouteCollectorProxy $reseller) {
+    // Reseller Dashboard
+    $reseller->get('', [ResellerController::class, 'dashboard'])->setName('reseller');
+    $reseller->get('/dashboard', [ResellerController::class, 'dashboard']);
+
+    // User Management
+    $reseller->get('/users', [ResellerController::class, 'listUsers'])->setName('reseller.users');
+    $reseller->get('/users/create', [ResellerController::class, 'createUserForm'])->setName('reseller.users.create');
+    $reseller->post('/users/create', [ResellerController::class, 'createUser']);
+    $reseller->get('/users/{id}/edit', [ResellerController::class, 'editUserForm'])->setName('reseller.users.edit');
+    $reseller->post('/users/{id}/update', [ResellerController::class, 'updateUser']);
+    $reseller->post('/users/{id}/delete', [ResellerController::class, 'deleteUser']);
+    $reseller->post('/users/{id}/toggle', [ResellerController::class, 'toggleUserStatus']);
+
+    // Package Management (Reseller's own packages for their users)
+    $reseller->get('/packages', [ResellerController::class, 'listPackages'])->setName('reseller.packages');
+    $reseller->get('/packages/create', [ResellerController::class, 'createPackageForm'])->setName('reseller.packages.create');
+    $reseller->post('/packages/create', [ResellerController::class, 'createPackage']);
+})->add(new AuthMiddleware($container))->add(function ($request, $handler) {
+    // Role check: only admin and reseller can access
+    $user = $request->getAttribute('user');
+    if ($user && ($user->role === 'admin' || $user->role === 'reseller')) {
+        return $handler->handle($request);
+    }
+    $response = new \Slim\Psr7\Response();
+    return $response->withHeader('Location', '/')->withStatus(302);
+});
+
+// ============================================
 // Admin Routes
 // ============================================
 
@@ -171,11 +205,16 @@ $app->group('/admin', function (RouteCollectorProxy $admin) {
     $admin->post('/packages/{id}/update', [DashboardController::class, 'updatePackage']);
     $admin->post('/packages/{id}/delete', [DashboardController::class, 'deletePackage']);
 
+    // Reseller Package Management (Admin creates packages for resellers)
+    $admin->get('/reseller-packages', [DashboardController::class, 'adminResellerPackages'])->setName('admin.reseller_packages');
+    $admin->post('/reseller-packages/create', [DashboardController::class, 'createResellerPackage']);
+    $admin->post('/reseller-packages/{id}/update', [DashboardController::class, 'updateResellerPackage']);
+    $admin->post('/reseller-packages/{id}/delete', [DashboardController::class, 'deleteResellerPackage']);
+
     // API Keys Management
     $admin->get('/api-keys', [DashboardController::class, 'adminApiKeys'])->setName('admin.apikeys');
     $admin->post('/api-keys/create', [DashboardController::class, 'createApiKey']);
     $admin->post('/api-keys/{id}/toggle', [DashboardController::class, 'toggleApiKey']);
     $admin->post('/api-keys/{id}/delete', [DashboardController::class, 'deleteApiKey']);
 })->add(new AuthMiddleware($container, true)); // true = admin only
-
 
