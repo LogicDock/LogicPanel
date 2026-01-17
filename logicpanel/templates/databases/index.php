@@ -225,12 +225,18 @@ if ($selectedService) {
                     </div>
                     <div class="card-body">
                         <?php if ($database->type === 'mongodb'): ?>
-                            <!-- MongoDB - Use Mongo Express -->
-                            <a href="<?= $_ENV['MONGO_EXPRESS_URL'] ?? 'https://mongo-admin.logicdock.cloud' ?>" target="_blank"
-                                class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
-                                <i data-lucide="external-link"></i>
-                                Open Mongo Express
-                            </a>
+                            <!-- MongoDB - Copy Connection String (Mongo Express is admin-only) -->
+                            <?php
+                            $mongoConnStr = "mongodb://{$database->db_user}:[PASSWORD]@{$database->container_name}:27017/{$database->db_name}";
+                            ?>
+                            <button onclick="copyToClipboard('<?= htmlspecialchars($mongoConnStr) ?>')" class="btn btn-primary"
+                                style="width: 100%; margin-bottom: 10px;">
+                                <i data-lucide="copy"></i>
+                                Copy Connection String
+                            </button>
+                            <small class="text-muted" style="display: block; margin-bottom: 10px; text-align: center;">
+                                Use MongoDB Compass or your preferred client
+                            </small>
                         <?php else: ?>
                             <!-- MariaDB/PostgreSQL - Use Adminer with SSO -->
                             <?php
