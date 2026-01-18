@@ -1,6 +1,6 @@
 <?php
 $page_title = 'Packages';
-$current_page = 'admin';
+$current_page = 'packages';
 ob_start();
 ?>
 

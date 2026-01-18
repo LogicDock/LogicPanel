@@ -1,6 +1,6 @@
 <?php
 $page_title = 'API Keys';
-$current_page = 'admin';
+$current_page = 'apikeys';
 ob_start();
 ?>
 
