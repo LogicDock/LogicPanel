@@ -109,6 +109,15 @@ $app->addRoutingMiddleware();
 // Initialize Database
 $container->get('db');
 
+// Auto-run pending database migrations
+try {
+    $migrationService = new \LogicPanel\Services\MigrationService();
+    $migrationService->runPendingMigrations();
+} catch (\Exception $e) {
+    // Log but don't fail - allow app to start even if migrations fail
+    error_log('Migration error: ' . $e->getMessage());
+}
+
 // Load Routes
 require BASE_PATH . '/config/routes.php';
 
