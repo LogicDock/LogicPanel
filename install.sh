@@ -41,8 +41,199 @@ detect_os() {
         exit 1
     fi
 }
+
+# Detect cloud provider
+detect_cloud_provider() {
+    # Check for AWS
+    if [ -f /sys/devices/virtual/dmi/id/product_uuid ] && grep -qi "ec2" /sys/devices/virtual/dmi/id/product_uuid 2>/dev/null; then
+        echo "aws"
+        return
+    fi
+    if curl -s --connect-timeout 1 http://169.254.169.254/latest/meta-data/ &>/dev/null; then
+        echo "aws"
+        return
+    fi
+    
+    # Check for Google Cloud
+    if curl -s --connect-timeout 1 -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/ &>/dev/null; then
+        echo "gcp"
+        return
+    fi
+    
+    # Check for Azure
+    if curl -s --connect-timeout 1 -H "Metadata: true" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" &>/dev/null; then
+        echo "azure"
+        return
+    fi
+    
+    # Check for DigitalOcean
+    if curl -s --connect-timeout 1 http://169.254.169.254/metadata/v1/ &>/dev/null; then
+        echo "digitalocean"
+        return
+    fi
+    
+    echo "none"
+}
+
+# Check if port is open using various methods
+check_port_open() {
+    local port=$1
+    
+    # Check with ss/netstat if port is listening
+    if command -v ss &>/dev/null; then
+        ss -tlnp | grep -q ":${port} " && return 0
+    fi
+    
+    return 1
+}
+
+# Detect firewall type
+detect_firewall() {
+    if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
+        echo "ufw"
+    elif command -v firewall-cmd &>/dev/null && systemctl is-active firewalld &>/dev/null; then
+        echo "firewalld"
+    elif command -v iptables &>/dev/null && iptables -L &>/dev/null 2>&1; then
+        echo "iptables"
+    else
+        echo "none"
+    fi
+}
+
+# Open port based on firewall type
+open_port() {
+    local port=$1
+    local protocol=${2:-tcp}
+    local firewall=$(detect_firewall)
+    
+    case $firewall in
+        ufw)
+            # Check if rule already exists
+            if ! ufw status | grep -q "${port}/${protocol}"; then
+                ufw allow ${port}/${protocol} &>/dev/null
+                log_info "Opened port ${port}/${protocol} (ufw)"
+            fi
+            ;;
+        firewalld)
+            # Check if already open
+            if ! firewall-cmd --query-port=${port}/${protocol} &>/dev/null; then
+                firewall-cmd --permanent --add-port=${port}/${protocol} &>/dev/null
+                firewall-cmd --reload &>/dev/null
+                log_info "Opened port ${port}/${protocol} (firewalld)"
+            fi
+            ;;
+        iptables)
+            # Check if rule exists
+            if ! iptables -C INPUT -p ${protocol} --dport ${port} -j ACCEPT &>/dev/null 2>&1; then
+                iptables -I INPUT -p ${protocol} --dport ${port} -j ACCEPT &>/dev/null
+                # Try to save iptables rules
+                if command -v iptables-save &>/dev/null; then
+                    iptables-save > /etc/iptables.rules 2>/dev/null || true
+                fi
+                log_info "Opened port ${port}/${protocol} (iptables)"
+            fi
+            ;;
+        none)
+            # No firewall detected, assume open
+            ;;
+    esac
+}
+
+# Configure all required ports
+configure_firewall() {
+    log_step "Step 1/7: Firewall Configuration"
+    
+    local cloud=$(detect_cloud_provider)
+    local firewall=$(detect_firewall)
+    
+    # Required ports
+    local REQUIRED_PORTS=(
+        "22:SSH"
+        "80:HTTP"
+        "443:HTTPS"
+    )
+    
+    # Optional ports for external database access
+    local OPTIONAL_PORTS=(
+        "3306:MySQL"
+        "5432:PostgreSQL"
+        "27017:MongoDB"
+    )
+    
+    log_info "Detected firewall: ${firewall:-none}"
+    log_info "Cloud provider: ${cloud:-none}"
+    
+    # Handle cloud providers
+    if [ "$cloud" != "none" ]; then
+        echo ""
+        echo -e "${YELLOW}╔════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║  CLOUD PROVIDER DETECTED: ${cloud^^}                              ║${NC}"
+        echo -e "${YELLOW}╠════════════════════════════════════════════════════════════════╣${NC}"
+        echo -e "${YELLOW}║  Please ensure these ports are open in your cloud firewall:    ║${NC}"
+        echo -e "${YELLOW}║                                                                ║${NC}"
+        echo -e "${YELLOW}║  REQUIRED:                                                     ║${NC}"
+        echo -e "${YELLOW}║    • Port 22   (SSH)                                           ║${NC}"
+        echo -e "${YELLOW}║    • Port 80   (HTTP)                                          ║${NC}"
+        echo -e "${YELLOW}║    • Port 443  (HTTPS)                                         ║${NC}"
+        echo -e "${YELLOW}║                                                                ║${NC}"
+        echo -e "${YELLOW}║  OPTIONAL (for external database access):                      ║${NC}"
+        echo -e "${YELLOW}║    • Port 3306  (MySQL/MariaDB)                                ║${NC}"
+        echo -e "${YELLOW}║    • Port 5432  (PostgreSQL)                                   ║${NC}"
+        echo -e "${YELLOW}║    • Port 27017 (MongoDB)                                      ║${NC}"
+        echo -e "${YELLOW}╠════════════════════════════════════════════════════════════════╣${NC}"
+        
+        case $cloud in
+            aws)
+                echo -e "${YELLOW}║  AWS: EC2 Console → Security Groups → Inbound Rules          ║${NC}"
+                ;;
+            gcp)
+                echo -e "${YELLOW}║  GCP: VPC Network → Firewall Rules → Create Rule             ║${NC}"
+                ;;
+            azure)
+                echo -e "${YELLOW}║  Azure: Network Security Group → Inbound Rules               ║${NC}"
+                ;;
+            digitalocean)
+                echo -e "${YELLOW}║  DO: Networking → Firewalls → Add Rule                       ║${NC}"
+                ;;
+        esac
+        
+        echo -e "${YELLOW}╚════════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        read -p "Press ENTER after configuring cloud firewall (or skip with 's'): " CLOUD_CONFIRM
+        [ "$CLOUD_CONFIRM" = "s" ] && log_info "Skipped cloud firewall confirmation"
+    fi
+    
+    # Open required ports on local firewall
+    if [ "$firewall" != "none" ]; then
+        log_info "Configuring local firewall..."
+        
+        for port_info in "${REQUIRED_PORTS[@]}"; do
+            local port="${port_info%%:*}"
+            local name="${port_info##*:}"
+            open_port $port tcp
+        done
+        
+        log_success "Required ports configured (22, 80, 443)"
+        
+        # Ask about optional ports
+        echo ""
+        read -p "Open database ports for external access (3306, 5432, 27017)? [y/N]: " OPEN_DB_PORTS
+        if [[ "$OPEN_DB_PORTS" =~ ^[Yy]$ ]]; then
+            for port_info in "${OPTIONAL_PORTS[@]}"; do
+                local port="${port_info%%:*}"
+                local name="${port_info##*:}"
+                open_port $port tcp
+            done
+            log_success "Database ports opened"
+        else
+            log_info "Database ports skipped (use internal Docker network)"
+        fi
+    else
+        log_success "No firewall detected - ports should be open"
+    fi
+}
 install_docker() {
-    log_step "Step 1/6: Docker Installation"
+    log_step "Step 2/7: Docker Installation"
     if command -v docker &> /dev/null; then
         log_success "Docker already installed"
     else
@@ -56,7 +247,7 @@ install_docker() {
     fi
 }
 setup_nginx_proxy() {
-    log_step "Step 2/6: Nginx Proxy Setup"
+    log_step "Step 3/7: Nginx Proxy Setup"
     docker network inspect nginx-proxy_web &>/dev/null || docker network create nginx-proxy_web
     log_success "Network ready"
     
@@ -101,7 +292,7 @@ EOF
     log_success "Nginx Proxy deployed"
 }
 get_configuration() {
-    log_step "Step 3/6: Panel Configuration"
+    log_step "Step 4/7: Panel Configuration"
     echo ""
     read -p "Panel Domain (e.g., panel.example.com): " PANEL_DOMAIN
     [ -z "$PANEL_DOMAIN" ] && log_error "Domain required" && exit 1
@@ -123,7 +314,7 @@ get_configuration() {
     log_success "Configuration complete"
 }
 deploy_logicpanel() {
-    log_step "Step 4/6: Deploying LogicPanel"
+    log_step "Step 5/7: Deploying LogicPanel"
     mkdir -p $INSTALL_DIR && cd $INSTALL_DIR
     
     cat > docker-compose.yml << EOF
@@ -184,7 +375,7 @@ EOF
     log_success "LogicPanel deployed"
 }
 create_cli() {
-    log_step "Step 5/6: CLI Commands"
+    log_step "Step 6/7: CLI Commands"
     echo '#!/bin/bash
 cd /opt/logicpanel
 case "$1" in
@@ -199,7 +390,7 @@ esac' > /usr/local/bin/logicpanel
     log_success "CLI created"
 }
 show_summary() {
-    log_step "Step 6/6: Complete!"
+    log_step "Step 7/7: Complete!"
     
     echo ""
     echo -e "${YELLOW}Waiting for SSL certificate and services to start...${NC}"
@@ -233,6 +424,7 @@ main() {
     show_banner
     check_root
     detect_os
+    configure_firewall
     install_docker
     setup_nginx_proxy
     get_configuration
