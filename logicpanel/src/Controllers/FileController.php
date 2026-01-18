@@ -131,7 +131,7 @@ class FileController extends BaseController
     }
 
     /**
-     * Upload a file
+     * Upload a file (with optional ZIP/TAR extraction)
      */
     public function upload(Request $request, Response $response, array $args): Response
     {
@@ -154,6 +154,7 @@ class FileController extends BaseController
 
         $targetPath = $data['path'] ?? '/app';
         $targetPath = $this->normalizePath($targetPath);
+        $extractArchive = ($data['extract'] ?? 'false') === 'true';
 
         if (strpos($targetPath, '/app') !== 0) {
             return $this->jsonResponse($response, ['success' => false, 'error' => 'Invalid path'], 400);
@@ -169,26 +170,84 @@ class FileController extends BaseController
             return $this->jsonResponse($response, ['success' => false, 'error' => 'Upload failed'], 400);
         }
 
-        // Check file size (max 50MB)
-        if ($uploadedFile->getSize() > 50 * 1024 * 1024) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'File too large (max 50MB)'], 400);
+        // Check file size (max 200MB for archives, as requested no hard limit)
+        $maxSize = 200 * 1024 * 1024;
+        if ($uploadedFile->getSize() > $maxSize) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'File too large (max 200MB per upload)'], 400);
         }
 
         $filename = $uploadedFile->getClientFilename();
-        $content = base64_encode($uploadedFile->getStream()->getContents());
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
-        // Write file via exec
-        $destPath = rtrim($targetPath, '/') . '/' . $filename;
-        $cmd = ['sh', '-c', "echo '{$content}' | base64 -d > '{$destPath}'"];
-        $this->docker->execInContainer($service->container_id, $cmd);
+        // Check if it's an archive and should be extracted
+        $isArchive = in_array($extension, ['zip', 'tar', 'gz', 'tgz']);
+        $shouldExtract = $extractArchive && $isArchive;
 
-        $this->logActivity($user->id, $serviceId, 'file_upload', "Uploaded file: {$destPath}");
+        // Save file to temp location first
+        $tempDir = sys_get_temp_dir();
+        $tempFile = $tempDir . '/' . uniqid('upload_') . '_' . $filename;
+        $uploadedFile->moveTo($tempFile);
 
-        return $this->jsonResponse($response, [
-            'success' => true,
-            'message' => 'File uploaded successfully',
-            'path' => $destPath
-        ]);
+        try {
+            // Copy file to container using docker cp
+            $destPath = rtrim($targetPath, '/') . '/' . $filename;
+            $this->docker->copyToContainer($service->container_id, $tempFile, $destPath);
+
+            $message = 'File uploaded successfully';
+            $extractedTo = null;
+
+            // Extract if it's an archive and extraction was requested
+            if ($shouldExtract) {
+                $extractPath = rtrim($targetPath, '/');
+                $extractCmd = $this->getExtractCommand($extension, $destPath, $extractPath);
+
+                if ($extractCmd) {
+                    $result = $this->docker->execInContainer($service->container_id, $extractCmd);
+
+                    if ($result['exitCode'] === 0) {
+                        // Remove the archive after successful extraction
+                        $this->docker->execInContainer($service->container_id, ['rm', '-f', $destPath]);
+                        $message = 'Archive uploaded and extracted successfully';
+                        $extractedTo = $extractPath;
+                    } else {
+                        $message = 'File uploaded but extraction failed';
+                    }
+                }
+            }
+
+            $this->logActivity($user->id, $serviceId, 'file_upload', "Uploaded: {$filename}" . ($shouldExtract ? ' (extracted)' : ''));
+
+            return $this->jsonResponse($response, [
+                'success' => true,
+                'message' => $message,
+                'path' => $shouldExtract && $extractedTo ? $extractedTo : $destPath,
+                'extracted' => $shouldExtract && $extractedTo ? true : false
+            ]);
+
+        } finally {
+            // Clean up temp file
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+        }
+    }
+
+    /**
+     * Get extraction command based on archive type
+     */
+    private function getExtractCommand(string $extension, string $archivePath, string $extractTo): ?array
+    {
+        switch ($extension) {
+            case 'zip':
+                return ['sh', '-c', "cd '{$extractTo}' && unzip -o '{$archivePath}'"];
+            case 'tar':
+                return ['sh', '-c', "tar -xf '{$archivePath}' -C '{$extractTo}'"];
+            case 'gz':
+            case 'tgz':
+                return ['sh', '-c', "tar -xzf '{$archivePath}' -C '{$extractTo}'"];
+            default:
+                return null;
+        }
     }
 
     /**

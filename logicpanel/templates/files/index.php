@@ -643,8 +643,8 @@ ob_start();
     let monacoReady = false;
 
     // Initialize Monaco
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
-    require(['vs/editor/editor.main'], function() {
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], function () {
         monacoReady = true;
         monaco.editor.defineTheme('logicpanel-dark', {
             base: 'vs-dark',
@@ -701,7 +701,7 @@ ob_start();
         currentEditingFile = path;
         const filename = path.split('/').pop();
         const language = getMonacoLanguage(filename);
-        
+
         document.getElementById('editorFileName').textContent = filename;
         document.getElementById('editorLanguage').textContent = language;
         document.getElementById('editorModal').classList.remove('hidden');
@@ -728,7 +728,7 @@ ob_start();
         });
 
         // Add Ctrl+S shortcut
-        monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
+        monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
             saveFile();
         });
 
@@ -847,10 +847,21 @@ ob_start();
         const files = event.target.files;
         if (!files.length) return;
 
+        const archiveExtensions = ['zip', 'tar', 'gz', 'tgz'];
+
         for (const file of files) {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('path', currentPath);
+
+            // Check if it's an archive and ask user
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isArchive = archiveExtensions.includes(ext);
+
+            if (isArchive) {
+                const extract = confirm(`${file.name} is an archive.\n\nClick OK to extract its contents.\nClick Cancel to upload as-is.`);
+                formData.append('extract', extract ? 'true' : 'false');
+            }
 
             try {
                 const response = await fetch(`<?= $base_url ?>/files/${serviceId}/upload`, {
@@ -859,7 +870,11 @@ ob_start();
                 });
 
                 const data = await response.json();
-                if (!data.success) {
+                if (data.success) {
+                    if (data.extracted) {
+                        alert(`${file.name} extracted successfully!`);
+                    }
+                } else {
                     alert(`Failed to upload ${file.name}: ${data.error}`);
                 }
             } catch (error) {
