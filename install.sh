@@ -141,7 +141,7 @@ open_port() {
 
 # Configure all required ports
 configure_firewall() {
-    log_step "Step 1/7: Firewall Configuration"
+    log_step "Step 1/8: Firewall Configuration"
     
     local cloud=$(detect_cloud_provider)
     local firewall=$(detect_firewall)
@@ -233,7 +233,7 @@ configure_firewall() {
     fi
 }
 install_docker() {
-    log_step "Step 2/7: Docker Installation"
+    log_step "Step 2/8: Docker Installation"
     if command -v docker &> /dev/null; then
         log_success "Docker already installed"
     else
@@ -247,7 +247,7 @@ install_docker() {
     fi
 }
 setup_nginx_proxy() {
-    log_step "Step 3/7: Nginx Proxy Setup"
+    log_step "Step 3/8: Nginx Proxy Setup"
     docker network inspect nginx-proxy_web &>/dev/null || docker network create nginx-proxy_web
     log_success "Network ready"
     
@@ -292,7 +292,7 @@ EOF
     log_success "Nginx Proxy deployed"
 }
 get_configuration() {
-    log_step "Step 4/7: Panel Configuration"
+    log_step "Step 4/8: Panel Configuration"
     echo ""
     read -p "Panel Domain (e.g., panel.example.com): " PANEL_DOMAIN
     [ -z "$PANEL_DOMAIN" ] && log_error "Domain required" && exit 1
@@ -314,7 +314,7 @@ get_configuration() {
     log_success "Configuration complete"
 }
 deploy_logicpanel() {
-    log_step "Step 5/7: Deploying LogicPanel"
+    log_step "Step 5/8: Deploying LogicPanel"
     mkdir -p $INSTALL_DIR && cd $INSTALL_DIR
     
     cat > docker-compose.yml << EOF
@@ -374,8 +374,85 @@ EOF
     docker compose pull && docker compose up -d
     log_success "LogicPanel deployed"
 }
+
+setup_shared_databases() {
+    log_step "Step 6/8: Shared Database Services"
+    
+    # Create shared Docker Compose file
+    mkdir -p $INSTALL_DIR/shared-db
+    cd $INSTALL_DIR/shared-db
+    
+    SHARED_ROOT_PASS=$(generate_password 24)
+    
+    cat > docker-compose.yml << EOF
+version: '3.8'
+services:
+  # Shared MongoDB
+  mongo-shared:
+    image: mongo:6.0
+    container_name: logicpanel-mongo-shared
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${SHARED_ROOT_PASS}
+    ports:
+      - "27017:27017" # Exposed for Compass
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - internal
+
+  # Shared PostgreSQL
+  postgres-shared:
+    image: postgres:15
+    container_name: logicpanel-postgres-shared
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${SHARED_ROOT_PASS}
+    ports:
+      - "5432:5432" # Exposed for pgAdmin/DBeaver
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  # Shared MariaDB
+  mariadb-shared:
+    image: mariadb:10.11
+    container_name: logicpanel-mariadb-shared
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SHARED_ROOT_PASS}
+    ports:
+      - "3306:3306" # Exposed for Workbench/HeidiSQL
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - internal
+
+networks:
+  internal:
+    external: true
+
+volumes:
+  mongo_data:
+  postgres_data:
+  mariadb_data:
+EOF
+
+    # Add shared password to main .env
+    echo "SHARED_DB_ROOT_PASSWORD=${SHARED_ROOT_PASS}" >> $INSTALL_DIR/.env
+    echo "SHARED_MONGO_CONTAINER=logicpanel-mongo-shared" >> $INSTALL_DIR/.env
+    echo "SHARED_POSTGRES_CONTAINER=logicpanel-postgres-shared" >> $INSTALL_DIR/.env
+    echo "SHARED_MARIADB_CONTAINER=logicpanel-mariadb-shared" >> $INSTALL_DIR/.env
+
+    # Start shared services
+    docker compose up -d
+    log_success "Shared databases deployed (Mongo, Postgres, MariaDB)"
+}
 create_cli() {
-    log_step "Step 6/7: CLI Commands"
+    log_step "Step 7/8: CLI Commands"
     echo '#!/bin/bash
 cd /opt/logicpanel
 case "$1" in
@@ -390,7 +467,7 @@ esac' > /usr/local/bin/logicpanel
     log_success "CLI created"
 }
 show_summary() {
-    log_step "Step 7/7: Complete!"
+    log_step "Step 8/8: Complete!"
     
     echo ""
     echo -e "${YELLOW}Waiting for SSL certificate and services to start...${NC}"
@@ -429,6 +506,7 @@ main() {
     setup_nginx_proxy
     get_configuration
     deploy_logicpanel
+    setup_shared_databases
     create_cli
     show_summary
 }
