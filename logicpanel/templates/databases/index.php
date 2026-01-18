@@ -197,13 +197,21 @@ if ($selectedService) {
                         <div class="form-group mt-20">
                             <label class="form-label">Connection String</label>
                             <?php
-                            $host = $database->container_name ?? 'lp_' . $selectedService->name . '_' . $database->type;
+                            // Get actual password from database record
+                            $password = $database->password ?? '';
+
+                            // Use server's public IP/hostname for external access
+                            // Container name only works inside Docker network
+                            $externalHost = $_ENV['SERVER_HOSTNAME'] ?? $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_ADDR'] ?? 'localhost';
+                            // Remove port from HTTP_HOST if present
+                            $externalHost = preg_replace('/:\d+$/', '', $externalHost);
+
                             if ($database->type === 'postgresql') {
-                                $connStr = "postgresql://{$database->db_user}:[PASSWORD]@{$host}:5432/{$database->db_name}";
+                                $connStr = "postgresql://{$database->db_user}:{$password}@{$externalHost}:5432/{$database->db_name}";
                             } elseif ($database->type === 'mongodb') {
-                                $connStr = "mongodb://{$database->db_user}:[PASSWORD]@{$host}:27017/{$database->db_name}";
+                                $connStr = "mongodb://{$database->db_user}:{$password}@{$externalHost}:27017/{$database->db_name}";
                             } else {
-                                $connStr = "mysql://{$database->db_user}:[PASSWORD]@{$host}:3306/{$database->db_name}";
+                                $connStr = "mysql://{$database->db_user}:{$password}@{$externalHost}:3306/{$database->db_name}";
                             }
                             ?>
                             <div class="conn-string">
@@ -227,7 +235,11 @@ if ($selectedService) {
                         <?php if ($database->type === 'mongodb'): ?>
                             <!-- MongoDB - Copy Connection String (Mongo Express is admin-only) -->
                             <?php
-                            $mongoConnStr = "mongodb://{$database->db_user}:[PASSWORD]@{$database->container_name}:27017/{$database->db_name}";
+                            // Use already computed $password and $externalHost from above
+                            $mongoPassword = $database->password ?? '';
+                            $mongoHost = $_ENV['SERVER_HOSTNAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+                            $mongoHost = preg_replace('/:\d+$/', '', $mongoHost);
+                            $mongoConnStr = "mongodb://{$database->db_user}:{$mongoPassword}@{$mongoHost}:27017/{$database->db_name}";
                             ?>
                             <button onclick="copyToClipboard('<?= htmlspecialchars($mongoConnStr) ?>')" class="btn btn-primary"
                                 style="width: 100%; margin-bottom: 10px;">
