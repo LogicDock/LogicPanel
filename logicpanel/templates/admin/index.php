@@ -9,7 +9,7 @@ ob_start();
 </div>
 
 <!-- Stats Overview -->
-<div class="stats-row">
+<div class="admin-stats-grid">
     <div class="stat-card">
         <div class="stat-card-icon green">
             <i data-lucide="users"></i>
@@ -44,7 +44,7 @@ ob_start();
 </div>
 
 <!-- Docker Status & Recent Activity -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+<div class="admin-panel-grid">
     <!-- Docker Status -->
     <div class="card">
         <div class="card-header">
@@ -104,13 +104,20 @@ ob_start();
             <?php else: ?>
                 <div class="activity-list">
                     <?php foreach (array_slice((array) $recentActivity, 0, 8) as $activity): ?>
+                        <?php
+                        // Support both object and array access
+                        $userName = is_object($activity) ? ($activity->user_name ?? 'System') : ($activity['user_name'] ?? 'System');
+                        $desc = is_object($activity) ? ($activity->description ?? $activity->action ?? '') : ($activity['description'] ?? $activity['action'] ?? '');
+                        $createdAt = is_object($activity) ? ($activity->created_at ?? null) : ($activity['created_at'] ?? null);
+                        ?>
                         <div class="activity-item">
                             <div class="activity-info">
-                                <strong><?= htmlspecialchars($activity->user_name ?? 'System') ?></strong>
-                                <span
-                                    class="text-muted"><?= htmlspecialchars($activity->description ?? $activity->action) ?></span>
+                                <strong><?= htmlspecialchars($userName) ?></strong>
+                                <span class="text-muted"><?= htmlspecialchars($desc) ?></span>
                             </div>
-                            <span class="activity-time"><?= date('M d, H:i', strtotime($activity->created_at)) ?></span>
+                            <?php if ($createdAt): ?>
+                                <span class="activity-time"><?= date('M d, H:i', strtotime($createdAt)) ?></span>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -120,6 +127,21 @@ ob_start();
 </div>
 
 <style>
+    /* Admin Stats Grid - Responsive */
+    .admin-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    /* Admin Panel Grid - Responsive */
+    .admin-panel-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
     .info-list {
         display: flex;
         flex-direction: column;
@@ -169,16 +191,44 @@ ob_start();
         display: flex;
         flex-direction: column;
         gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .activity-info span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .activity-time {
         color: var(--text-muted);
         white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 1200px) {
+        .admin-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 
     @media (max-width: 991px) {
-        div[style*="grid-template-columns: 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
+        .admin-panel-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .admin-stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .activity-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
         }
     }
 </style>
