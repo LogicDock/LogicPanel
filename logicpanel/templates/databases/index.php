@@ -198,7 +198,8 @@ if ($selectedService) {
                             <label class="form-label">Connection String</label>
                             <?php
                             // Get actual password from database record
-                            $password = $database->password ?? '';
+                            // Use getRawOriginal to bypass $hidden attribute
+                            $password = $database->getRawOriginal('db_password') ?? $database->db_password ?? '';
 
                             // Use server's public IP/hostname for external access
                             // Container name only works inside Docker network
@@ -235,8 +236,8 @@ if ($selectedService) {
                         <?php if ($database->type === 'mongodb'): ?>
                             <!-- MongoDB - Copy Connection String (Mongo Express is admin-only) -->
                             <?php
-                            // Use already computed $password and $externalHost from above
-                            $mongoPassword = $database->password ?? '';
+                            // Use getRawOriginal to get actual password bypassing hidden attribute
+                            $mongoPassword = $database->getRawOriginal('db_password') ?? '';
                             $mongoHost = $_ENV['SERVER_HOSTNAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
                             $mongoHost = preg_replace('/:\d+$/', '', $mongoHost);
                             $mongoConnStr = "mongodb://{$database->db_user}:{$mongoPassword}@{$mongoHost}:27017/{$database->db_name}";
@@ -497,55 +498,204 @@ if ($selectedService) {
         }
     }
 
+    // Toast notification system
+    function showToast(message, type = 'success', duration = 3000) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(toast);
+        lucide.createIcons();
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    // Custom confirm modal
+    function showConfirm(title, message, onConfirm) {
+        const modal = document.createElement('div');
+        modal.className = 'confirm-modal';
+        modal.innerHTML = `
+            <div class="confirm-backdrop"></div>
+            <div class="confirm-content">
+                <h3>${title}</h3>
+                <p>${message}</p>
+                <div class="confirm-actions">
+                    <button class="btn btn-secondary" onclick="this.closest('.confirm-modal').remove()">Cancel</button>
+                    <button class="btn btn-danger" id="confirmBtn">Delete</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        modal.querySelector('#confirmBtn').onclick = () => {
+            modal.remove();
+            onConfirm();
+        };
+        modal.querySelector('.confirm-backdrop').onclick = () => modal.remove();
+    }
+
     function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-            alert('Copied to clipboard!');
+            showToast('Copied to clipboard!', 'success');
         }).catch(err => {
-            console.error('Copy failed:', err);
+            showToast('Copy failed: ' + err.message, 'error');
         });
     }
 
     async function deleteDatabase(id, name) {
-        if (!confirm('Delete database "' + name + '"? This action cannot be undone and all data will be lost!')) return;
+        showConfirm(
+            'Delete Database',
+            `Are you sure you want to delete "${name}"?<br><small class="text-danger">This action cannot be undone and all data will be lost!</small>`,
+            async () => {
+                try {
+                    const response = await fetch('<?= $base_url ?>/databases/' + id + '/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
 
-        try {
-            const response = await fetch('<?= $base_url ?>/databases/' + id + '/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                location.reload();
-            } else {
-                alert(result.error || 'Failed to delete database');
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('Database deleted successfully', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast(result.error || 'Failed to delete database', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error: ' + error.message, 'error');
+                }
             }
-        } catch (error) {
-            alert('Error: ' + error.message);
-        }
+        );
     }
 
     async function resetPassword(id) {
-        if (!confirm('Reset database password? You will need to update your application configuration.')) return;
+        showConfirm(
+            'Reset Password',
+            'Reset database password?<br><small>You will need to update your application configuration.</small>',
+            async () => {
+                try {
+                    const response = await fetch('<?= $base_url ?>/databases/' + id + '/reset-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
 
-        try {
-            const response = await fetch('<?= $base_url ?>/databases/' + id + '/reset-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                alert('New password: ' + result.password + '\n\nPlease save this password!');
-                location.reload();
-            } else {
-                alert(result.error || 'Failed to reset password');
+                    const result = await response.json();
+                    if (result.success) {
+                        // Show password in a modal that can be copied
+                        const pwModal = document.createElement('div');
+                        pwModal.className = 'confirm-modal';
+                        pwModal.innerHTML = `
+                            <div class="confirm-backdrop"></div>
+                            <div class="confirm-content">
+                                <h3><i data-lucide="key"></i> New Password</h3>
+                                <p>Your new database password:</p>
+                                <div class="conn-string" style="margin: 15px 0;">
+                                    <code id="newPwCode">${result.password}</code>
+                                    <button onclick="copyToClipboard('${result.password}')" class="copy-btn">
+                                        <i data-lucide="copy"></i>
+                                    </button>
+                                </div>
+                                <p class="text-warning"><small>Please save this password! You won't see it again.</small></p>
+                                <div class="confirm-actions">
+                                    <button class="btn btn-primary" onclick="this.closest('.confirm-modal').remove(); location.reload();">Done</button>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(pwModal);
+                        lucide.createIcons();
+                    } else {
+                        showToast(result.error || 'Failed to reset password', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error: ' + error.message, 'error');
+                }
             }
-        } catch (error) {
-            alert('Error: ' + error.message);
-        }
+        );
     }
 </script>
+
+<style>
+    /* Toast Notifications */
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10000;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+    }
+    .toast.show {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    .toast-success { border-left: 4px solid var(--success); }
+    .toast-success svg { color: var(--success); }
+    .toast-error { border-left: 4px solid var(--danger); }
+    .toast-error svg { color: var(--danger); }
+    .toast-info { border-left: 4px solid var(--primary); }
+    .toast-info svg { color: var(--primary); }
+
+    /* Confirm Modal */
+    .confirm-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .confirm-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+    }
+    .confirm-content {
+        position: relative;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    .confirm-content h3 {
+        margin: 0 0 15px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .confirm-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+</style>
 
 <?php
 $content = ob_get_clean();
