@@ -1,109 +1,261 @@
-<!-- cPanel Style Minimal Sidebar -->
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <a href="<?= $base_url ?? '' ?>/" class="sidebar-brand-text">LogicPanel</a>
+<!-- LogicPanel Sidebar - cPanel Style -->
+<aside class="lp-sidebar">
+    <div class="lp-sidebar-brand">
+        <div class="lp-brand-icon">
+            <i data-lucide="server"></i>
+        </div>
+        <span class="lp-brand-text">LogicPanel</span>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav class="lp-sidebar-nav">
+        <!-- Main Tools -->
         <a href="<?= $base_url ?? '' ?>/"
-            class="sidebar-nav-link <?= ($current_page ?? '') === 'dashboard' ? 'active' : '' ?>">
+            class="lp-nav-item <?= ($current_page ?? '') === 'dashboard' ? 'active' : '' ?>">
             <i data-lucide="layout-grid"></i>
             <span>Tools</span>
         </a>
 
         <?php if (in_array($_SESSION['user_role'] ?? '', ['admin', 'reseller'])): ?>
-            <div class="sidebar-nav-section">Reseller</div>
+            <!-- Reseller Section -->
+            <div class="lp-nav-section">Reseller</div>
             <a href="<?= $base_url ?? '' ?>/reseller"
-                class="sidebar-nav-link <?= ($current_page ?? '') === 'reseller' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'reseller' ? 'active' : '' ?>">
                 <i data-lucide="briefcase"></i>
                 <span>Dashboard</span>
             </a>
             <a href="<?= $base_url ?? '' ?>/reseller/users"
-                class="sidebar-nav-link <?= in_array($current_page ?? '', ['reseller_users']) ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'reseller_users' ? 'active' : '' ?>">
                 <i data-lucide="users"></i>
                 <span>My Users</span>
             </a>
             <a href="<?= $base_url ?? '' ?>/reseller/packages"
-                class="sidebar-nav-link <?= ($current_page ?? '') === 'reseller_packages' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'reseller_packages' ? 'active' : '' ?>">
                 <i data-lucide="package"></i>
                 <span>My Packages</span>
             </a>
         <?php endif; ?>
 
         <?php if (($_SESSION['user_role'] ?? '') === 'admin'): ?>
-            <div class="sidebar-nav-section">Admin</div>
+            <!-- Admin Section -->
+            <div class="lp-nav-section">Admin</div>
             <a href="<?= $base_url ?? '' ?>/admin"
-                class="sidebar-nav-link <?= ($current_page ?? '') === 'admin' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'admin' ? 'active' : '' ?>">
                 <i data-lucide="shield"></i>
                 <span>Admin Panel</span>
             </a>
             <a href="<?= $base_url ?? '' ?>/admin/packages"
-                class="sidebar-nav-link <?= ($current_page ?? '') === 'packages' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'packages' ? 'active' : '' ?>">
                 <i data-lucide="package"></i>
                 <span>Packages</span>
             </a>
             <a href="<?= $base_url ?? '' ?>/admin/reseller-packages"
-                class="sidebar-nav-link <?= ($current_page ?? '') === 'reseller_packages_admin' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'reseller_packages_admin' ? 'active' : '' ?>">
                 <i data-lucide="layers"></i>
                 <span>Reseller Plans</span>
             </a>
             <a href="<?= $base_url ?? '' ?>/admin/api-keys"
-                class="sidebar-nav-link <?= ($current_page ?? '') === 'apikeys' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'apikeys' ? 'active' : '' ?>">
                 <i data-lucide="key"></i>
                 <span>API Keys</span>
             </a>
         <?php endif; ?>
     </nav>
 
-    <div class="sidebar-user">
-        <div class="sidebar-user-avatar">
+    <!-- User Section -->
+    <div class="lp-sidebar-user">
+        <div class="lp-user-avatar">
             <?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?>
         </div>
-        <div class="sidebar-user-info">
-            <div class="sidebar-user-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User') ?></div>
-            <div class="sidebar-user-role"><?= htmlspecialchars($_SESSION['user_role'] ?? 'user') ?></div>
+        <div class="lp-user-info">
+            <div class="lp-user-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User') ?></div>
+            <div class="lp-user-role"><?= ucfirst(htmlspecialchars($_SESSION['user_role'] ?? 'user')) ?></div>
         </div>
-        <a href="<?= $base_url ?? '' ?>/logout" class="sidebar-logout" title="Logout">
+        <a href="<?= $base_url ?? '' ?>/logout" class="lp-logout" title="Logout">
             <i data-lucide="log-out"></i>
         </a>
     </div>
 </aside>
 
 <style>
-    .sidebar {
-        background: #1E2127 !important;
+    /* ========================================
+   LogicPanel Sidebar - Clean Rebuild
+   ======================================== */
+    .lp-sidebar {
+        width: 200px;
+        background: #1E2127;
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 
-    .sidebar-brand {
-        padding: 18px 20px;
+    /* Brand */
+    .lp-sidebar-brand {
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .sidebar-brand-text {
-        color: #fff;
-        font-size: 18px;
-        font-weight: 600;
-        text-decoration: none;
-        letter-spacing: -0.5px;
+    .lp-brand-icon {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #3C873A 0%, #2D6A2E 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .sidebar-brand-text:hover {
-        color: #fff;
-        text-decoration: none;
-    }
-
-    .sidebar-logout {
-        color: var(--text-muted);
-        padding: 5px;
-        transition: color 0.15s ease;
-    }
-
-    .sidebar-logout:hover {
-        color: var(--danger);
-    }
-
-    .sidebar-logout svg {
+    .lp-brand-icon svg {
         width: 18px;
         height: 18px;
+        color: #fff;
+    }
+
+    .lp-brand-text {
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+    }
+
+    /* Navigation */
+    .lp-sidebar-nav {
+        flex: 1;
+        padding: 12px 0;
+        overflow-y: auto;
+    }
+
+    .lp-nav-section {
+        padding: 16px 18px 8px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #6B7280;
+    }
+
+    .lp-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 18px;
+        color: #9CA3AF;
+        font-size: 13px;
+        text-decoration: none !important;
+        transition: all 0.15s ease;
+        border-left: 3px solid transparent;
+        margin: 2px 0;
+    }
+
+    .lp-nav-item svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+    .lp-nav-item:hover {
+        color: #E5E7EB;
+        background: rgba(255, 255, 255, 0.05);
+        text-decoration: none !important;
+    }
+
+    .lp-nav-item.active {
+        color: #fff;
+        background: rgba(60, 135, 58, 0.2);
+        border-left-color: #3C873A;
+    }
+
+    .lp-nav-item.active svg {
+        color: #3C873A;
+    }
+
+    /* User Section */
+    .lp-sidebar-user {
+        padding: 14px 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .lp-user-avatar {
+        width: 34px;
+        height: 34px;
+        background: linear-gradient(135deg, #3C873A 0%, #2D6A2E 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 600;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .lp-user-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .lp-user-name {
+        color: #E5E7EB;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .lp-user-role {
+        color: #6B7280;
+        font-size: 10px;
+    }
+
+    .lp-logout {
+        color: #6B7280;
+        padding: 6px;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lp-logout:hover {
+        color: #EF4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .lp-logout svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Update main content margin for new sidebar width */
+    .main-content {
+        margin-left: 200px !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .lp-sidebar {
+            transform: translateX(-100%);
+        }
+
+        .lp-sidebar.open {
+            transform: translateX(0);
+        }
+
+        .main-content {
+            margin-left: 0 !important;
+        }
     }
 </style>
