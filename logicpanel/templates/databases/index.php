@@ -201,6 +201,10 @@ if ($selectedService) {
                             // Use getRawOriginal to bypass $hidden attribute
                             $password = $database->getRawOriginal('db_password') ?? $database->db_password ?? '';
 
+                            // URL-encode username and password for special characters
+                            $encodedUser = rawurlencode($database->db_user);
+                            $encodedPassword = rawurlencode($password);
+
                             // Use server's public IP/hostname for external access
                             // Container name only works inside Docker network
                             $externalHost = $_ENV['SERVER_HOSTNAME'] ?? $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_ADDR'] ?? 'localhost';
@@ -208,11 +212,11 @@ if ($selectedService) {
                             $externalHost = preg_replace('/:\d+$/', '', $externalHost);
 
                             if ($database->type === 'postgresql') {
-                                $connStr = "postgresql://{$database->db_user}:{$password}@{$externalHost}:5432/{$database->db_name}";
+                                $connStr = "postgresql://{$encodedUser}:{$encodedPassword}@{$externalHost}:5432/{$database->db_name}";
                             } elseif ($database->type === 'mongodb') {
-                                $connStr = "mongodb://{$database->db_user}:{$password}@{$externalHost}:27017/{$database->db_name}";
+                                $connStr = "mongodb://{$encodedUser}:{$encodedPassword}@{$externalHost}:27017/{$database->db_name}";
                             } else {
-                                $connStr = "mysql://{$database->db_user}:{$password}@{$externalHost}:3306/{$database->db_name}";
+                                $connStr = "mysql://{$encodedUser}:{$encodedPassword}@{$externalHost}:3306/{$database->db_name}";
                             }
                             ?>
                             <div class="conn-string">
@@ -240,7 +244,10 @@ if ($selectedService) {
                             $mongoPassword = $database->getRawOriginal('db_password') ?? '';
                             $mongoHost = $_ENV['SERVER_HOSTNAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
                             $mongoHost = preg_replace('/:\d+$/', '', $mongoHost);
-                            $mongoConnStr = "mongodb://{$database->db_user}:{$mongoPassword}@{$mongoHost}:27017/{$database->db_name}";
+                            // URL-encode username and password for special characters
+                            $mongoEncodedUser = rawurlencode($database->db_user);
+                            $mongoEncodedPassword = rawurlencode($mongoPassword);
+                            $mongoConnStr = "mongodb://{$mongoEncodedUser}:{$mongoEncodedPassword}@{$mongoHost}:27017/{$database->db_name}";
                             ?>
                             <button onclick="copyToClipboard('<?= htmlspecialchars($mongoConnStr) ?>')" class="btn btn-primary"
                                 style="width: 100%; margin-bottom: 10px;">
@@ -508,7 +515,7 @@ if ($selectedService) {
         `;
         document.body.appendChild(toast);
         lucide.createIcons();
-        
+
         setTimeout(() => toast.classList.add('show'), 10);
         setTimeout(() => {
             toast.classList.remove('show');
@@ -532,7 +539,7 @@ if ($selectedService) {
             </div>
         `;
         document.body.appendChild(modal);
-        
+
         modal.querySelector('#confirmBtn').onclick = () => {
             modal.remove();
             onConfirm();
@@ -632,22 +639,41 @@ if ($selectedService) {
         display: flex;
         align-items: center;
         gap: 10px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         z-index: 10000;
         opacity: 0;
         transform: translateX(100%);
         transition: all 0.3s ease;
     }
+
     .toast.show {
         opacity: 1;
         transform: translateX(0);
     }
-    .toast-success { border-left: 4px solid var(--success); }
-    .toast-success svg { color: var(--success); }
-    .toast-error { border-left: 4px solid var(--danger); }
-    .toast-error svg { color: var(--danger); }
-    .toast-info { border-left: 4px solid var(--primary); }
-    .toast-info svg { color: var(--primary); }
+
+    .toast-success {
+        border-left: 4px solid var(--success);
+    }
+
+    .toast-success svg {
+        color: var(--success);
+    }
+
+    .toast-error {
+        border-left: 4px solid var(--danger);
+    }
+
+    .toast-error svg {
+        color: var(--danger);
+    }
+
+    .toast-info {
+        border-left: 4px solid var(--primary);
+    }
+
+    .toast-info svg {
+        color: var(--primary);
+    }
 
     /* Confirm Modal */
     .confirm-modal {
@@ -661,14 +687,16 @@ if ($selectedService) {
         align-items: center;
         justify-content: center;
     }
+
     .confirm-backdrop {
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0,0,0,0.6);
+        background: rgba(0, 0, 0, 0.6);
     }
+
     .confirm-content {
         position: relative;
         background: var(--card-bg);
@@ -679,16 +707,26 @@ if ($selectedService) {
         width: 90%;
         animation: modalIn 0.2s ease;
     }
+
     @keyframes modalIn {
-        from { opacity: 0; transform: scale(0.9); }
-        to { opacity: 1; transform: scale(1); }
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
     }
+
     .confirm-content h3 {
         margin: 0 0 15px 0;
         display: flex;
         align-items: center;
         gap: 8px;
     }
+
     .confirm-actions {
         display: flex;
         gap: 10px;
