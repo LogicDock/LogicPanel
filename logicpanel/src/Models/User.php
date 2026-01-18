@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class User extends Model
 {
-    protected $table = 'lp_users';
+    protected $table = 'users';
 
     protected $fillable = [
         'username',

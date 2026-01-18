@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ResellerPackage extends Model
 {
-    protected $table = 'lp_reseller_packages';
+    protected $table = 'reseller_packages';
 
     protected $fillable = [
         'name',
