@@ -82,6 +82,8 @@ CREATE TABLE IF NOT EXISTS `lp_services` (
     `status` ENUM('pending', 'creating', 'running', 'stopped', 'error', 'suspended', 'terminated') DEFAULT 'pending',
     `runtime` VARCHAR(20) DEFAULT 'nodejs',
     `node_version` VARCHAR(10) DEFAULT '20',
+    `runtime_version` VARCHAR(10) DEFAULT '20',
+    `created_by` INT UNSIGNED NULL COMMENT 'Admin/Reseller who created this service',
     `port` INT UNSIGNED DEFAULT 3000,
     `git_repo` VARCHAR(500) NULL,
     `git_branch` VARCHAR(100) DEFAULT 'main',
@@ -258,6 +260,25 @@ CREATE TABLE IF NOT EXISTS `lp_login_attempts` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_ip` (`ip_address`),
     INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Reseller Packages table
+CREATE TABLE IF NOT EXISTS `lp_reseller_packages` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL UNIQUE,
+    `display_name` VARCHAR(255) NOT NULL,
+    `description` TEXT NULL,
+    `max_users` INT UNSIGNED DEFAULT 10,
+    `max_services` INT UNSIGNED DEFAULT 50,
+    `max_disk_gb` INT UNSIGNED DEFAULT 100,
+    `max_bandwidth_gb` INT UNSIGNED DEFAULT 1000,
+    `can_create_packages` TINYINT(1) DEFAULT 1,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `sort_order` INT UNSIGNED DEFAULT 0,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_sort` (`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert default settings
