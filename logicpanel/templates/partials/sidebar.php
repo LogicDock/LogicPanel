@@ -25,6 +25,11 @@
                 <i data-lucide="users"></i>
                 <span>My Users</span>
             </a>
+            <a href="<?= $base_url ?? '' ?>/reseller/users/create"
+                class="lp-nav-item <?= ($current_page ?? '') === 'reseller_users_create' ? 'active' : '' ?>">
+                <i data-lucide="user-plus"></i>
+                <span>Create User</span>
+            </a>
             <a href="<?= $base_url ?? '' ?>/reseller/packages"
                 class="lp-nav-item <?= ($current_page ?? '') === 'reseller_packages' ? 'active' : '' ?>">
                 <i data-lucide="package"></i>
@@ -40,10 +45,26 @@
                 <i data-lucide="shield"></i>
                 <span>Admin Panel</span>
             </a>
+            <a href="<?= $base_url ?? '' ?>/admin/nodes"
+                class="lp-nav-item <?= ($current_page ?? '') === 'nodes' ? 'active' : '' ?>">
+                <i data-lucide="server"></i>
+                <span>Nodes / Servers</span>
+            </a>
+            <a href="<?= $base_url ?? '' ?>/admin/users"
+                class="lp-nav-item <?= ($current_page ?? '') === 'users' ? 'active' : '' ?>">
+                <i data-lucide="users"></i>
+                <span>Users</span>
+            </a>
             <a href="<?= $base_url ?? '' ?>/admin/packages"
                 class="lp-nav-item <?= ($current_page ?? '') === 'packages' ? 'active' : '' ?>">
                 <i data-lucide="package"></i>
-                <span>Packages</span>
+                <span>Service Packages</span>
+            </a>
+            <div class="lp-nav-section">Reseller Management</div>
+            <a href="<?= $base_url ?? '' ?>/admin/resellers"
+                class="lp-nav-item <?= ($current_page ?? '') === 'resellers' ? 'active' : '' ?>">
+                <i data-lucide="user-cog"></i>
+                <span>Resellers List</span>
             </a>
             <a href="<?= $base_url ?? '' ?>/admin/reseller-packages"
                 class="lp-nav-item <?= ($current_page ?? '') === 'reseller_packages_admin' ? 'active' : '' ?>">

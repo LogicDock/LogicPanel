@@ -932,5 +932,29 @@ class DashboardController extends BaseController
             'message' => 'Reseller package deleted successfully'
         ]);
     }
+    /**
+     * List all Resellers (Admin only)
+     */
+    public function adminResellers(Request $request, Response $response): Response
+    {
+        $resellers = \LogicPanel\Models\User::where('role', 'reseller')->get();
+        return $this->render($response, 'admin/resellers', [
+            'title' => 'Resellers List',
+            'current_page' => 'resellers',
+            'resellers' => $resellers
+        ]);
+    }
+
+    /**
+     * List all Nodes/Servers (Admin only)
+     */
+    public function adminNodes(Request $request, Response $response): Response
+    {
+        // For now, just a placeholder as we might not have lp_nodes table yet
+        return $this->render($response, 'admin/nodes', [
+            'title' => 'Nodes / Servers',
+            'current_page' => 'nodes'
+        ]);
+    }
 }
 
