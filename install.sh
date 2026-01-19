@@ -431,28 +431,8 @@ services:
     networks:
       - internal
 
-  # Adminer - LogicPanel Themed DB Manager
-  adminer:
-    image: adminer:4.8.1
-    container_name: logicpanel-adminer
-    restart: always
-    environment:
-      ADMINER_DEFAULT_SERVER: logicpanel-mariadb-shared
-      VIRTUAL_HOST: adminer.\${PANEL_DOMAIN}
-      LETSENCRYPT_HOST: adminer.\${PANEL_DOMAIN}
-    volumes:
-      - ./adminer.css:/var/www/html/adminer.css:ro
-    networks:
-      - internal
-      - nginx-proxy_web
-    depends_on:
-      - mariadb-shared
-      - postgres-shared
-
 networks:
   internal:
-    external: true
-  nginx-proxy_web:
     external: true
 
 volumes:
@@ -460,49 +440,6 @@ volumes:
   postgres_data:
   mariadb_data:
 EOF
-
-    # Download and save custom Adminer CSS theme
-    cat > $INSTALL_DIR/shared-db/adminer.css << 'CSSEOF'
-/* LogicPanel Adminer Theme - Dark/Light Mode */
-:root {
-    --lp-bg-primary: #f5f6f8;
-    --lp-bg-secondary: #ffffff;
-    --lp-bg-card: #ffffff;
-    --lp-bg-input: #f8f9fa;
-    --lp-bg-hover: #e9ecef;
-    --lp-text-primary: #333333;
-    --lp-text-secondary: #666666;
-    --lp-border: #e3e6e8;
-    --lp-accent: #3C873A;
-    --lp-shadow: rgba(0, 0, 0, 0.08);
-}
-[data-theme="dark"], .dark-mode {
-    --lp-bg-primary: #1a1d21;
-    --lp-bg-secondary: #252830;
-    --lp-bg-card: #2d313a;
-    --lp-bg-input: #1e2127;
-    --lp-bg-hover: #3e4249;
-    --lp-text-primary: #e4e6eb;
-    --lp-text-secondary: #b0b3b8;
-    --lp-border: #3e4249;
-    --lp-shadow: rgba(0, 0, 0, 0.3);
-}
-body { font-family: 'Segoe UI', sans-serif; background: var(--lp-bg-primary) !important; color: var(--lp-text-primary) !important; margin: 0; padding: 20px; }
-#menu { background: var(--lp-bg-card) !important; border: 1px solid var(--lp-border) !important; border-radius: 8px !important; padding: 15px !important; margin-bottom: 20px !important; }
-#menu h1 { color: var(--lp-accent) !important; }
-table { background: var(--lp-bg-card) !important; border-collapse: collapse !important; width: 100% !important; border-radius: 8px !important; overflow: hidden !important; }
-th { background: var(--lp-bg-hover) !important; color: var(--lp-text-primary) !important; padding: 12px 15px !important; }
-td { padding: 10px 15px !important; border-bottom: 1px solid var(--lp-border) !important; color: var(--lp-text-primary) !important; }
-tr:hover td { background: var(--lp-bg-hover) !important; }
-input, select, textarea { background: var(--lp-bg-input) !important; border: 1px solid var(--lp-border) !important; border-radius: 6px !important; padding: 10px !important; color: var(--lp-text-primary) !important; }
-input:focus { border-color: var(--lp-accent) !important; }
-input[type="submit"], button { background: var(--lp-accent) !important; color: #fff !important; border: none !important; border-radius: 6px !important; padding: 10px 20px !important; cursor: pointer !important; }
-a { color: var(--lp-accent) !important; }
-fieldset { background: var(--lp-bg-card) !important; border: 1px solid var(--lp-border) !important; border-radius: 8px !important; padding: 20px !important; }
-legend { background: var(--lp-accent) !important; color: #fff !important; padding: 5px 15px !important; border-radius: 4px !important; }
-.message { padding: 12px !important; border-radius: 6px !important; }
-body::after { content: "Powered by LogicPanel"; display: block; text-align: center; padding: 20px; color: var(--lp-text-secondary); font-size: 12px; }
-CSSEOF
 
     # Add shared password to main .env
     echo "SHARED_DB_ROOT_PASSWORD=${SHARED_ROOT_PASS}" >> $INSTALL_DIR/.env
@@ -559,11 +496,10 @@ show_summary() {
     echo -e "  Password: ${API_SECRET}"
     echo -e "  Secure: Yes (check SSL)"
     echo ""
-    echo -e "${YELLOW}Database Management:${NC}"
-    echo -e "  Adminer: https://adminer.${PANEL_DOMAIN}"
-    echo -e "  MySQL Port: 3306"
-    echo -e "  PostgreSQL Port: 5432"
-    echo -e "  MongoDB Port: 27017"
+    echo -e "${YELLOW}Database Ports (External Access):${NC}"
+    echo -e "  MySQL: 3306"
+    echo -e "  PostgreSQL: 5432"
+    echo -e "  MongoDB: 27017"
     echo ""
 }
 main() {
