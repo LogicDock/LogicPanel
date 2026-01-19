@@ -814,7 +814,7 @@ class DashboardController extends BaseController
     public function adminResellerPackages(Request $request, Response $response): Response
     {
         $packages = \LogicPanel\Models\ResellerPackage::withCount('users')
-            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
 
         return $this->render($response, 'admin/reseller-packages', [

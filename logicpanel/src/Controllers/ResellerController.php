@@ -98,7 +98,10 @@ class ResellerController extends BaseController
     public function createUser(Request $request, Response $response): Response
     {
         $reseller = $request->getAttribute('user');
-        $data = $request->getParsedBody();
+
+        // Parse JSON body
+        $body = $request->getBody()->getContents();
+        $data = json_decode($body, true) ?? [];
 
         // Validate
         $username = trim($data['username'] ?? '');
@@ -370,7 +373,10 @@ class ResellerController extends BaseController
     public function createPackage(Request $request, Response $response): Response
     {
         $reseller = $request->getAttribute('user');
-        $data = $request->getParsedBody();
+
+        // Parse JSON body
+        $body = $request->getBody()->getContents();
+        $data = json_decode($body, true) ?? [];
 
         $name = trim($data['name'] ?? '');
         $displayName = trim($data['display_name'] ?? $name);
