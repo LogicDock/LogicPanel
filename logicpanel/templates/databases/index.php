@@ -214,7 +214,8 @@ if ($selectedService) {
                             if ($database->type === 'postgresql') {
                                 $connStr = "postgresql://{$encodedUser}:{$encodedPassword}@{$externalHost}:5432/{$database->db_name}";
                             } elseif ($database->type === 'mongodb') {
-                                $connStr = "mongodb://{$encodedUser}:{$encodedPassword}@{$externalHost}:27017/{$database->db_name}";
+                                // authSource is required - user is created in specific database, not admin
+                                $connStr = "mongodb://{$encodedUser}:{$encodedPassword}@{$externalHost}:27017/{$database->db_name}?authSource={$database->db_name}";
                             } else {
                                 $connStr = "mysql://{$encodedUser}:{$encodedPassword}@{$externalHost}:3306/{$database->db_name}";
                             }
@@ -247,7 +248,7 @@ if ($selectedService) {
                             // URL-encode username and password for special characters
                             $mongoEncodedUser = rawurlencode($database->db_user);
                             $mongoEncodedPassword = rawurlencode($mongoPassword);
-                            $mongoConnStr = "mongodb://{$mongoEncodedUser}:{$mongoEncodedPassword}@{$mongoHost}:27017/{$database->db_name}";
+                            $mongoConnStr = "mongodb://{$mongoEncodedUser}:{$mongoEncodedPassword}@{$mongoHost}:27017/{$database->db_name}?authSource={$database->db_name}";
                             ?>
                             <button onclick="copyToClipboard('<?= htmlspecialchars($mongoConnStr) ?>')" class="btn btn-primary"
                                 style="width: 100%; margin-bottom: 10px;">

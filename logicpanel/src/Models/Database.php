@@ -56,13 +56,18 @@ class Database extends Model
      */
     public function getConnectionString(): string
     {
+        // URL-encode credentials for special characters
+        $encodedUser = rawurlencode($this->db_user);
+        $encodedPass = rawurlencode($this->db_password);
+
         switch ($this->type) {
             case 'mariadb':
-                return "mysql://{$this->db_user}:{$this->db_password}@{$this->container_name}:3306/{$this->db_name}";
+                return "mysql://{$encodedUser}:{$encodedPass}@{$this->container_name}:3306/{$this->db_name}";
             case 'postgresql':
-                return "postgresql://{$this->db_user}:{$this->db_password}@{$this->container_name}:5432/{$this->db_name}";
+                return "postgresql://{$encodedUser}:{$encodedPass}@{$this->container_name}:5432/{$this->db_name}";
             case 'mongodb':
-                return "mongodb://{$this->db_user}:{$this->db_password}@{$this->container_name}:27017/{$this->db_name}";
+                // authSource is required - user is created in specific database
+                return "mongodb://{$encodedUser}:{$encodedPass}@{$this->container_name}:27017/{$this->db_name}?authSource={$this->db_name}";
             default:
                 return '';
         }

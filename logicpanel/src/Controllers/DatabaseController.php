@@ -531,13 +531,18 @@ class DatabaseController extends BaseController
      */
     private function getConnectionString(string $type, string $host, string $db, string $user, string $pass): string
     {
+        // URL-encode credentials for special characters
+        $encodedUser = rawurlencode($user);
+        $encodedPass = rawurlencode($pass);
+
         switch ($type) {
             case 'mariadb':
-                return "mysql://{$user}:{$pass}@{$host}:3306/{$db}";
+                return "mysql://{$encodedUser}:{$encodedPass}@{$host}:3306/{$db}";
             case 'postgresql':
-                return "postgresql://{$user}:{$pass}@{$host}:5432/{$db}";
+                return "postgresql://{$encodedUser}:{$encodedPass}@{$host}:5432/{$db}";
             case 'mongodb':
-                return "mongodb://{$user}:{$pass}@{$host}:27017/{$db}";
+                // authSource is required - user is created in the specific database, not admin
+                return "mongodb://{$encodedUser}:{$encodedPass}@{$host}:27017/{$db}?authSource={$db}";
             default:
                 return '';
         }
