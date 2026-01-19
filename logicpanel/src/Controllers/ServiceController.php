@@ -73,7 +73,7 @@ class ServiceController extends BaseController
         $service->name = $name;
         $service->runtime = $runtime;
         $service->status = 'provisioning';
-        $service->port = ($runtime === 'nodejs' ? 3000 : ($runtime === 'python' ? 8000 : 80));
+        $service->port = in_array($runtime, ['java', 'go']) ? 8080 : ($runtime === 'python' ? 8000 : 3000);
         $service->save();
 
         // 4. Assign Default Domain
@@ -948,8 +948,8 @@ class ServiceController extends BaseController
         $images = [
             'nodejs' => 'node:18-alpine',
             'python' => 'python:3.11-alpine',
-            'php' => 'php:8.2-fpm-alpine',
-            'static' => 'nginx:alpine'
+            'java' => 'openjdk:17-slim',
+            'go' => 'golang:1.21-alpine'
         ];
         $image = $images[$service->runtime] ?? 'node:18-alpine';
 

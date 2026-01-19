@@ -42,17 +42,17 @@ ob_start();
                                 </div>
                             </label>
                             <label class="runtime-btn">
-                                <input type="radio" name="runtime" value="php">
+                                <input type="radio" name="runtime" value="java">
                                 <div class="runtime-btn-content">
-                                    <div class="runtime-icon php"><i data-lucide="code-2"></i></div>
-                                    <span class="runtime-name">PHP / FPM</span>
+                                    <div class="runtime-icon java"><i data-lucide="coffee"></i></div>
+                                    <span class="runtime-name">Java (JDK 17)</span>
                                 </div>
                             </label>
                             <label class="runtime-btn">
-                                <input type="radio" name="runtime" value="static">
+                                <input type="radio" name="runtime" value="go">
                                 <div class="runtime-btn-content">
-                                    <div class="runtime-icon static"><i data-lucide="layout"></i></div>
-                                    <span class="runtime-name">Static Web</span>
+                                    <div class="runtime-icon go"><i data-lucide="zap"></i></div>
+                                    <span class="runtime-name">Go Lang</span>
                                 </div>
                             </label>
                         </div>
@@ -85,10 +85,18 @@ ob_start();
                     <div class="info-label">Storage</div>
                     <div class="info-value">10 GB Shared</div>
                 </div>
-                <div class="info-item p-3" style="background: rgba(76, 175, 80, 0.05);">
+                <div class="info-item p-3"
+                    style="background: rgba(76, 175, 80, 0.05); border-top: 1px solid var(--border-color);">
                     <div class="info-label">Estimated Price</div>
-                    <div class="info-value text-success font-weight-bold">$0.00 / Month</div>
+                    <div class="info-value text-success font-weight-bold" style="font-size: 16px;">$0.00 / Month</div>
                 </div>
+            </div>
+        </div>
+
+        <div class="info-card mt-3" style="border-style: dashed; opacity: 0.8;">
+            <div class="info-card-body p-3" style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+                <i data-lucide="info" style="width:14px; margin-right:5px; vertical-align:middle;"></i>
+                New services are automatically assigned a subdomain and SSL certificate.
             </div>
         </div>
     </div>
@@ -104,11 +112,12 @@ ob_start();
         border-radius: 8px;
         color: var(--text-primary);
         font-size: 14px;
-        transition: border 0.3s;
+        transition: border 0.3s, box-shadow 0.3s;
     }
 
     .form-control-custom:focus {
         border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(60, 135, 58, 0.1);
         outline: none;
     }
 
@@ -122,12 +131,13 @@ ob_start();
 
     .runtime-selection-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
         gap: 12px;
     }
 
     .runtime-btn {
         cursor: pointer;
+        margin: 0;
     }
 
     .runtime-btn input {
@@ -135,72 +145,102 @@ ob_start();
     }
 
     .runtime-btn-content {
-        padding: 15px 10px;
-        background: var(--bg-input);
+        padding: 20px 10px;
+        background: var(--bg-card);
         border: 1px solid var(--border-color);
-        border-radius: 10px;
+        border-radius: 12px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         transition: all 0.2s ease;
     }
 
     .runtime-btn:hover .runtime-btn-content {
         border-color: var(--primary);
-        background: rgba(255,255,255,0.02);
+        background: var(--bg-input);
+        transform: translateY(-2px);
     }
 
-    .runtime-btn input:checked + .runtime-btn-content {
+    .runtime-btn input:checked+.runtime-btn-content {
         border-color: var(--primary);
         background: rgba(60, 135, 58, 0.08);
-        box-shadow: 0 0 10px rgba(60, 135, 58, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .runtime-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255,255,255,0.05);
+        background: rgba(255, 255, 255, 0.03);
+        transition: all 0.2s;
+    }
+
+    .runtime-icon svg {
+        width: 22px;
+        height: 22px;
     }
 
     .runtime-name {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--text-muted);
     }
 
-    .runtime-btn input:checked + .runtime-btn-content .runtime-name {
-        color: var(--primary);
+    .runtime-btn input:checked+.runtime-btn-content .runtime-name {
+        color: var(--text-primary);
+    }
+
+    .runtime-btn input:checked+.runtime-btn-content .runtime-icon {
+        background: var(--primary);
+        color: white;
     }
 
     .btn-deploy {
         width: 100%;
-        padding: 14px;
+        padding: 16px;
         background: var(--primary);
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         color: white;
+        font-size: 15px;
         font-weight: 600;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 12px;
         cursor: pointer;
-        transition: opacity 0.2s;
+        transition: all 0.2s;
+        box-shadow: 0 4px 15px rgba(60, 135, 58, 0.2);
     }
 
     .btn-deploy:hover {
-        opacity: 0.9;
+        opacity: 0.95;
+        transform: scale(1.01);
     }
 
-    .nodejs { color: #68a063; }
-    .python { color: #3776ab; }
-    .php { color: #777bb4; }
-    .static { color: #00d8ff; }
+    .btn-deploy:active {
+        transform: scale(0.99);
+    }
+
+    .nodejs {
+        color: #68a063;
+    }
+
+    .python {
+        color: #3776ab;
+    }
+
+    .java {
+        color: #f89820;
+    }
+
+    .go {
+        color: #00add8;
+    }
 
     .form-text {
         font-size: 11px;
@@ -208,16 +248,26 @@ ob_start();
         margin-top: 5px;
         display: block;
     }
+
+    /* Custom scrollbar for better look */
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 10px;
+    }
 </style>
 
 <script>
-    document.getElementById('create-service-form').addEventListener('submit', async function(e) {
+    document.getElementById('create-service-form').addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = document.getElementById('btn-submit');
         const originalHtml = btn.innerHTML;
-        
+
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-sm"></span> Provisioning...';
+        btn.innerHTML = '<span class="spinner-sm"></span> Deploying...';
 
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
@@ -228,17 +278,23 @@ ob_start();
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
+
             const result = await response.json();
             if (result.success) {
-                window.location.href = '<?= $base_url ?>/services/' + result.service_id;
+                // Smooth transition
+                btn.innerHTML = '<i data-lucide="check-circle"></i> Success!';
+                if (window.lucide) lucide.createIcons();
+
+                setTimeout(() => {
+                    window.location.href = '<?= $base_url ?>/services/' + result.service_id;
+                }, 1000);
             } else {
-                alert('Error: ' + result.error);
+                alert('Deployment Error: ' + result.error);
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }
         } catch (error) {
-            alert('Failed to connect to server');
+            alert('Server connection failed. Please try again.');
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         }
