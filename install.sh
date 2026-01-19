@@ -433,7 +433,7 @@ services:
 
 networks:
   internal:
-    external: true
+    driver: bridge
 
 volumes:
   mongo_data:
