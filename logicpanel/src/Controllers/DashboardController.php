@@ -349,6 +349,8 @@ class DashboardController extends BaseController
      */
     public function adminDashboard(Request $request, Response $response): Response
     {
+        $user = $request->getAttribute('user');
+
         // System stats
         $docker = new DockerService();
         $dockerInfo = $docker->getInfo();
@@ -356,7 +358,8 @@ class DashboardController extends BaseController
 
         // Count statistics
         $stats = [
-            'users' => User::count(),
+            'users' => User::where('role', 'user')->count(),
+            'resellers' => User::where('role', 'reseller')->count(),
             'services' => Service::count(),
             'databases' => DB::table('databases')->count(),
             'domains' => DB::table('domains')->count()
@@ -370,8 +373,14 @@ class DashboardController extends BaseController
             ->limit(20)
             ->get();
 
+        // Admin's own services (like root WHM account)
+        $myServices = Service::where('user_id', $user->id)
+            ->with(['primaryDomain'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         // All services for admin management
-        $services = Service::with(['user', 'primaryDomain'])
+        $allServices = Service::with(['user', 'primaryDomain'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
@@ -382,7 +391,8 @@ class DashboardController extends BaseController
             'dockerConnected' => $dockerConnected,
             'dockerInfo' => $dockerInfo,
             'recentActivity' => $recentActivity,
-            'services' => $services
+            'myServices' => $myServices,
+            'allServices' => $allServices
         ]);
     }
 
@@ -396,6 +406,73 @@ class DashboardController extends BaseController
         return $this->render($response, 'admin/users', [
             'title' => 'Users - LogicPanel Admin',
             'users' => $users
+        ]);
+    }
+
+    /**
+     * Create user or reseller (Admin only)
+     */
+    public function createUser(Request $request, Response $response): Response
+    {
+        $data = json_decode($request->getBody()->getContents(), true);
+
+        // Validate required fields
+        if (empty($data['username']) || empty($data['email']) || empty($data['password'])) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Username, email, and password are required'
+            ], 400);
+        }
+
+        // Validate username format
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $data['username'])) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Username can only contain letters, numbers, and underscores'
+            ], 400);
+        }
+
+        // Check if username exists
+        if (User::where('username', $data['username'])->exists()) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Username already exists'
+            ], 400);
+        }
+
+        // Check if email exists
+        if (User::where('email', $data['email'])->exists()) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Email already exists'
+            ], 400);
+        }
+
+        // Create user
+        $user = new User();
+        $user->username = $data['username'];
+        $user->email = $data['email'];
+        $user->password = $data['password']; // Will be hashed automatically
+        $user->name = $data['name'] ?? $data['username'];
+        $user->role = $data['role'] ?? 'user'; // Can be 'user' or 'reseller'
+        $user->is_active = true;
+
+        // If reseller, assign package
+        if ($user->role === 'reseller' && !empty($data['reseller_package_id'])) {
+            $user->reseller_package_id = (int) $data['reseller_package_id'];
+        }
+
+        $user->save();
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => ucfirst($user->role) . ' created successfully',
+            'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->role
+            ]
         ]);
     }
 

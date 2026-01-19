@@ -15,7 +15,15 @@ ob_start();
             <i data-lucide="users"></i>
         </div>
         <div class="stat-card-value"><?= $stats['users'] ?? 0 ?></div>
-        <div class="stat-card-label">Total Users</div>
+        <div class="stat-card-label">Users</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-icon purple">
+            <i data-lucide="user-check"></i>
+        </div>
+        <div class="stat-card-value"><?= $stats['resellers'] ?? 0 ?></div>
+        <div class="stat-card-label">Resellers</div>
     </div>
 
     <div class="stat-card">
@@ -42,6 +50,40 @@ ob_start();
         <div class="stat-card-label">Domains</div>
     </div>
 </div>
+
+<!-- My Services Section (Admin's own services like Root WHM) -->
+<?php if (!empty($myServices)): ?>
+    <div class="card mb-20">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="server"></i>
+                My Services
+            </h2>
+            <a href="<?= $base_url ?>/admin/services" class="btn btn-sm btn-primary">
+                <i data-lucide="plus"></i>
+                Create Service
+            </a>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="services-list">
+                <?php foreach ($myServices as $service): ?>
+                    <div class="service-item">
+                        <div class="service-info">
+                            <strong><?= htmlspecialchars($service->name) ?></strong>
+                            <span class="text-muted">
+                                <?= $service->primaryDomain ? htmlspecialchars($service->primaryDomain->domain) : 'No domain' ?>
+                            </span>
+                        </div>
+                        <span
+                            class="badge badge-<?= $service->status === 'running' ? 'success' : ($service->status === 'stopped' ? 'secondary' : 'warning') ?>">
+                            <?= ucfirst($service->status) ?>
+                        </span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 
 <!-- Docker Status & Recent Activity -->
 <div class="admin-panel-grid">

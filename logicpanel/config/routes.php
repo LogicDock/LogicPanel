@@ -194,6 +194,7 @@ $app->group('/reseller', function (RouteCollectorProxy $reseller) {
 $app->group('/admin', function (RouteCollectorProxy $admin) {
     $admin->get('', [DashboardController::class, 'adminDashboard'])->setName('admin');
     $admin->get('/users', [DashboardController::class, 'adminUsers'])->setName('admin.users');
+    $admin->post('/users/create', [DashboardController::class, 'createUser']);
     $admin->get('/services', [DashboardController::class, 'adminServices'])->setName('admin.services');
     $admin->get('/settings', [DashboardController::class, 'adminSettings'])->setName('admin.settings');
     $admin->post('/settings', [DashboardController::class, 'saveAdminSettings']);
