@@ -702,7 +702,7 @@ class ServiceController extends BaseController
         if (!empty($data['new_user'])) {
             // Create new user
             $newUser = $data['new_user'];
-            
+
             if (empty($newUser['name']) || empty($newUser['email']) || empty($newUser['username']) || empty($newUser['password'])) {
                 return $this->jsonResponse($response, [
                     'success' => false,
@@ -714,7 +714,7 @@ class ServiceController extends BaseController
             $exists = \LogicPanel\Models\User::where('email', $newUser['email'])
                 ->orWhere('username', $newUser['username'])
                 ->first();
-            
+
             if ($exists) {
                 return $this->jsonResponse($response, [
                     'success' => false,
@@ -730,7 +730,7 @@ class ServiceController extends BaseController
             $user->role = 'user';
             $user->is_active = true;
             $user->save();
-            
+
             $userId = $user->id;
         } else {
             $userId = (int) ($data['user_id'] ?? 0);
@@ -760,9 +760,14 @@ class ServiceController extends BaseController
         $service->plan = $package->name;
         $service->status = 'pending';
         $service->runtime = $data['runtime'] ?? 'nodejs';
+        $service->runtime_version = $data['runtime_version'] ?? 'latest';
         $service->git_repo = $data['git_repo'] ?? null;
         $service->git_branch = $data['git_branch'] ?? 'main';
         $service->env_vars = json_encode([]);
+
+        // Track creator (for hierarchy: admin created this service)
+        $service->created_by = $admin->id;
+
         $service->save();
 
         // Create primary domain
@@ -792,8 +797,12 @@ class ServiceController extends BaseController
         }
 
         // Log activity
-        $this->logActivity($admin->id, $service->id, 'admin_create_service', 
-            "Admin created service '{$service->name}' for user #{$userId}");
+        $this->logActivity(
+            $admin->id,
+            $service->id,
+            'admin_create_service',
+            "Admin created service '{$service->name}' for user #{$userId}"
+        );
 
         return $this->jsonResponse($response, [
             'success' => true,
@@ -821,7 +830,7 @@ class ServiceController extends BaseController
     private function provisionContainer(Service $service, \LogicPanel\Models\Package $package): array
     {
         $containerName = 'lp-' . $service->name . '-' . $service->id;
-        
+
         // Determine image based on runtime
         $images = [
             'nodejs' => 'node:18-alpine',
@@ -859,7 +868,7 @@ class ServiceController extends BaseController
 
         $containerId = $createResult['Id'];
         $startResult = $this->docker->startContainer($containerId);
-        
+
         if ($startResult === false) {
             return ['success' => false, 'error' => 'Failed to start container'];
         }
