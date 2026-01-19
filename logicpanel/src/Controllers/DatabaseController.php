@@ -217,15 +217,24 @@ class DatabaseController extends BaseController
             $cmd = ['mysql', '-u', 'root', "-p{$rootPassword}", '-e', $sql];
 
         } elseif ($type === 'postgresql') {
-            // PostgreSQL: Create user and database
+            // PostgreSQL: Create user and database with proper isolation
+            // 1. Create user with connection limit
             $createUser = "CREATE USER {$dbUser} WITH PASSWORD '{$dbPassword}' CONNECTION LIMIT 10;";
+            // 2. Create database owned by this user
             $createDb = "CREATE DATABASE {$dbName} OWNER {$dbUser};";
+            // 3. Grant privileges only on this database
             $grantPrivs = "GRANT ALL PRIVILEGES ON DATABASE {$dbName} TO {$dbUser};";
+            // 4. Revoke public access to prevent cross-database access
+            $revokePublic = "REVOKE ALL ON DATABASE {$dbName} FROM PUBLIC;";
+            // 5. Revoke connect on other databases (extra security)
+            $revokeConnect = "REVOKE CONNECT ON DATABASE postgres FROM {$dbUser};";
 
             // Execute each command separately for PostgreSQL
             $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $createUser]);
             $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $createDb]);
-            $result = $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $grantPrivs]);
+            $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $grantPrivs]);
+            $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $revokePublic]);
+            $result = $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $revokeConnect]);
 
             return ['success' => true, 'output' => $result];
 
