@@ -184,11 +184,22 @@ ob_start();
                         </div>
                         <div class="form-group">
                             <label class="form-label">Runtime</label>
-                            <select id="runtime" class="form-control" required>
-                                <option value="nodejs">Node.js</option>
-                                <option value="python">Python</option>
-                                <option value="php">PHP</option>
-                                <option value="static">Static HTML</option>
+                            <select id="runtime" class="form-control" required onchange="updateRuntimeVersion()">
+                                <option value="">-- Select Runtime --</option>
+                                <?php
+                                $runtimes = include __DIR__ . '/../../config/runtimes.php';
+                                foreach ($runtimes as $key => $runtime):
+                                    ?>
+                                    <option value="<?= $key ?>"><?= $runtime['name'] ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Version</label>
+                            <select id="runtime_version" class="form-control" required>
+                                <option value="">-- Select Runtime First --</option>
                             </select>
                         </div>
                     </div>
@@ -367,6 +378,7 @@ ob_start();
             domain: document.getElementById('domain').value,
             package_id: document.getElementById('package_id').value,
             runtime: document.getElementById('runtime').value,
+            runtime_version: document.getElementById('runtime_version').value,
             git_repo: document.getElementById('git_repo').value,
             git_branch: document.getElementById('git_branch').value
         };
@@ -461,6 +473,33 @@ ob_start();
             }
         } catch (error) {
             alert('Error: ' + error.message);
+        }
+    }
+
+    // Runtime configurations
+    const runtimeConfig = <?= json_encode($runtimes) ?>;
+
+    // Update version dropdown when runtime changes
+    function updateRuntimeVersion() {
+        const runtime = document.getElementById('runtime').value;
+        const versionSelect = document.getElementById('runtime_version');
+        
+        // Clear existing options
+        versionSelect.innerHTML = '<option value="">-- Select Version --</option>';
+        
+        if (runtime && runtimeConfig[runtime]) {
+            const versions = runtimeConfig[runtime].versions;
+            for (const [key, version] of Object.entries(versions)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = version.label;
+                versionSelect.appendChild(option);
+            }
+            
+            // Auto-select first version
+            if (Object.keys(versions).length > 0) {
+                versionSelect.value = Object.keys(versions)[0];
+            }
         }
     }
 
