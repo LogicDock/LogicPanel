@@ -1,11 +1,8 @@
 <!-- LogicPanel Sidebar - cPanel Style -->
 <aside class="lp-sidebar">
-    <div class="lp-sidebar-brand">
-        <div class="lp-brand-icon">
-            <i data-lucide="server"></i>
-        </div>
-        <span class="lp-brand-text">LogicPanel</span>
-    </div>
+    <a href="<?= $base_url ?? '' ?>/" class="lp-sidebar-brand">
+        <img src="<?= $base_url ?? '' ?>/assets/logo.svg" alt="LogicPanel" class="lp-brand-logo">
+    </a>
 
     <nav class="lp-sidebar-nav">
         <!-- Main Tools -->
@@ -63,13 +60,15 @@
 
     <!-- User Section -->
     <div class="lp-sidebar-user">
-        <div class="lp-user-avatar">
-            <?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?>
-        </div>
-        <div class="lp-user-info">
-            <div class="lp-user-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User') ?></div>
-            <div class="lp-user-role"><?= ucfirst(htmlspecialchars($_SESSION['user_role'] ?? 'user')) ?></div>
-        </div>
+        <a href="<?= $base_url ?? '' ?>/settings" class="lp-user-profile" title="Account Settings">
+            <div class="lp-user-avatar">
+                <?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?>
+            </div>
+            <div class="lp-user-info">
+                <div class="lp-user-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User') ?></div>
+                <div class="lp-user-role"><?= ucfirst(htmlspecialchars($_SESSION['user_role'] ?? 'user')) ?></div>
+            </div>
+        </a>
         <a href="<?= $base_url ?? '' ?>/logout" class="lp-logout" title="Logout">
             <i data-lucide="log-out"></i>
         </a>
@@ -95,34 +94,16 @@
 
     /* Brand */
     .lp-sidebar-brand {
-        padding: 16px 18px;
+        padding: 14px 18px;
         display: flex;
         align-items: center;
-        gap: 10px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-decoration: none;
     }
 
-    .lp-brand-icon {
-        width: 32px;
+    .lp-brand-logo {
         height: 32px;
-        background: linear-gradient(135deg, #3C873A 0%, #2D6A2E 100%);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .lp-brand-icon svg {
-        width: 18px;
-        height: 18px;
-        color: #fff;
-    }
-
-    .lp-brand-text {
-        color: #fff;
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: -0.3px;
+        width: auto;
     }
 
     /* Navigation */
@@ -184,6 +165,22 @@
         align-items: center;
         gap: 10px;
         background: rgba(0, 0, 0, 0.1);
+    }
+
+    .lp-user-profile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        text-decoration: none;
+        padding: 4px;
+        margin: -4px;
+        border-radius: 6px;
+        transition: background 0.15s ease;
+    }
+
+    .lp-user-profile:hover {
+        background: rgba(255, 255, 255, 0.05);
     }
 
     .lp-user-avatar {

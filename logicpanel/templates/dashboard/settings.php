@@ -66,19 +66,28 @@ ob_start();
             </h2>
         </div>
         <div class="card-body">
-            <form method="POST" action="">
+            <form method="POST" action="" onsubmit="return validatePassword()">
                 <div class="form-group">
                     <label class="form-label">Current Password</label>
-                    <input type="password" name="current_password" class="form-control">
+                    <input type="password" name="current_password" id="current_password" class="form-control" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">New Password</label>
-                    <input type="password" name="new_password" class="form-control">
+                    <input type="password" name="new_password" id="new_password" class="form-control" minlength="8"
+                        required>
                     <small class="text-muted">Minimum 8 characters</small>
                 </div>
 
-                <button type="submit" class="btn btn-secondary">Update Password</button>
+                <div class="form-group">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" id="confirm_password" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn btn-secondary">
+                    <i data-lucide="key"></i>
+                    Update Password
+                </button>
             </form>
         </div>
     </div>
@@ -184,6 +193,23 @@ ob_start();
 </style>
 
 <script>
+    function validatePassword() {
+        const newPass = document.getElementById('new_password').value;
+        const confirmPass = document.getElementById('confirm_password').value;
+
+        if (newPass !== confirmPass) {
+            alert('New password and confirm password do not match!');
+            return false;
+        }
+
+        if (newPass.length < 8) {
+            alert('Password must be at least 8 characters!');
+            return false;
+        }
+
+        return true;
+    }
+
     async function setThemePreference(theme) {
         setTheme(theme);
 

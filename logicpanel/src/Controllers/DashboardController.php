@@ -536,5 +536,134 @@ class DashboardController extends BaseController
             'error' => 'API Key not found'
         ], 404);
     }
+
+    // ============================================
+    // Reseller Package Management Methods (Admin creates these for resellers)
+    // ============================================
+
+    /**
+     * Admin Reseller Packages List
+     */
+    public function adminResellerPackages(Request $request, Response $response): Response
+    {
+        $packages = \LogicPanel\Models\ResellerPackage::withCount('users')
+            ->orderBy('sort_order')
+            ->get();
+
+        return $this->render($response, 'admin/reseller-packages', [
+            'title' => 'Reseller Plans - Admin',
+            'current_page' => 'reseller_packages_admin',
+            'packages' => $packages
+        ]);
+    }
+
+    /**
+     * Create Reseller Package
+     */
+    public function createResellerPackage(Request $request, Response $response): Response
+    {
+        $data = json_decode($request->getBody()->getContents(), true);
+
+        // Validate name is unique
+        $existing = \LogicPanel\Models\ResellerPackage::where('name', $data['name'])->first();
+        if ($existing) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Package name already exists'], 400);
+        }
+
+        $package = new \LogicPanel\Models\ResellerPackage();
+        $package->name = $data['name'];
+        $package->display_name = $data['display_name'];
+        $package->description = $data['description'] ?? null;
+        $package->max_users = $data['max_users'] ?? 10;
+        $package->max_services = $data['max_services'] ?? 50;
+        $package->max_disk_gb = $data['max_disk_gb'] ?? 100;
+        $package->max_bandwidth_gb = $data['max_bandwidth_gb'] ?? 1000;
+        $package->can_create_packages = $data['can_create_packages'] ?? true;
+        $package->is_active = $data['is_active'] ?? true;
+        $package->sort_order = \LogicPanel\Models\ResellerPackage::max('sort_order') + 1;
+        $package->save();
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Reseller package created successfully',
+            'package' => $package
+        ]);
+    }
+
+    /**
+     * Update Reseller Package
+     */
+    public function updateResellerPackage(Request $request, Response $response, array $args): Response
+    {
+        $data = json_decode($request->getBody()->getContents(), true);
+        $packageId = (int) $args['id'];
+
+        $package = \LogicPanel\Models\ResellerPackage::find($packageId);
+        if (!$package) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Package not found'], 404);
+        }
+
+        // Check if name changed and is unique
+        if (isset($data['name']) && $data['name'] !== $package->name) {
+            $existing = \LogicPanel\Models\ResellerPackage::where('name', $data['name'])->first();
+            if ($existing) {
+                return $this->jsonResponse($response, ['success' => false, 'error' => 'Package name already exists'], 400);
+            }
+            $package->name = $data['name'];
+        }
+
+        if (isset($data['display_name']))
+            $package->display_name = $data['display_name'];
+        if (isset($data['description']))
+            $package->description = $data['description'];
+        if (isset($data['max_users']))
+            $package->max_users = $data['max_users'];
+        if (isset($data['max_services']))
+            $package->max_services = $data['max_services'];
+        if (isset($data['max_disk_gb']))
+            $package->max_disk_gb = $data['max_disk_gb'];
+        if (isset($data['max_bandwidth_gb']))
+            $package->max_bandwidth_gb = $data['max_bandwidth_gb'];
+        if (isset($data['can_create_packages']))
+            $package->can_create_packages = $data['can_create_packages'];
+        if (isset($data['is_active']))
+            $package->is_active = $data['is_active'];
+        $package->save();
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Reseller package updated successfully',
+            'package' => $package
+        ]);
+    }
+
+    /**
+     * Delete Reseller Package
+     */
+    public function deleteResellerPackage(Request $request, Response $response, array $args): Response
+    {
+        $packageId = (int) $args['id'];
+
+        $package = \LogicPanel\Models\ResellerPackage::find($packageId);
+        if (!$package) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Package not found'], 404);
+        }
+
+        // Don't delete if resellers are using it
+        $usersCount = \LogicPanel\Models\User::where('reseller_package_id', $packageId)->count();
+        if ($usersCount > 0) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => "Cannot delete: {$usersCount} resellers are using this package"
+            ], 400);
+        }
+
+        $package->delete();
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Reseller package deleted successfully'
+        ]);
+    }
 }
 
