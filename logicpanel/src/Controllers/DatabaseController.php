@@ -134,7 +134,20 @@ class DatabaseController extends BaseController
         // Ensure db_name and db_user are always set
         $dbName = !empty($data['db_name']) ? $data['db_name'] : $serviceName . '_db';
         $dbUser = !empty($data['db_user']) ? $data['db_user'] : $serviceName . '_u' . $uniqueId;
-        $dbPassword = $this->generatePassword();
+
+        // SECURITY: Sanitize database name and username to prevent SQL injection
+        // Only allow alphanumeric and underscores, max 64 chars
+        $dbName = preg_replace('/[^a-zA-Z0-9_]/', '', $dbName);
+        $dbUser = preg_replace('/[^a-zA-Z0-9_]/', '', $dbUser);
+        $dbName = substr($dbName, 0, 64);
+        $dbUser = substr($dbUser, 0, 32);
+
+        if (empty($dbName) || empty($dbUser)) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Invalid database name or username'], 400);
+        }
+
+        // SECURITY: Generate cryptographically secure password
+        $dbPassword = $this->generatePassword(32);
 
         // Get shared container name based on type
         $sharedContainerName = $this->getSharedContainerName($type);
@@ -207,11 +220,15 @@ class DatabaseController extends BaseController
         $rootPassword = $_ENV['SHARED_DB_ROOT_PASSWORD'] ?? 'logicpanel_root_secret';
 
         if ($type === 'mariadb') {
-            // MariaDB: Create database, user, and grant with connection limit
+            // MariaDB: Create database, user, and grant with strict isolation
             $sql = "CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; ";
             $sql .= "CREATE USER IF NOT EXISTS '{$dbUser}'@'%' IDENTIFIED BY '{$dbPassword}'; ";
+            // Grant ONLY on this specific database
             $sql .= "GRANT ALL PRIVILEGES ON `{$dbName}`.* TO '{$dbUser}'@'%'; ";
-            $sql .= "ALTER USER '{$dbUser}'@'%' WITH MAX_USER_CONNECTIONS 10; "; // Bad neighbor protection
+            // SECURITY: Limit concurrent connections (DoS protection)
+            $sql .= "ALTER USER '{$dbUser}'@'%' WITH MAX_USER_CONNECTIONS 10; ";
+            // SECURITY: Explicitly revoke dangerous global privileges
+            $sql .= "REVOKE SUPER, PROCESS, FILE, RELOAD ON *.* FROM '{$dbUser}'@'%'; ";
             $sql .= "FLUSH PRIVILEGES;";
 
             $cmd = ['mysql', '-u', 'root', "-p{$rootPassword}", '-e', $sql];
@@ -219,22 +236,24 @@ class DatabaseController extends BaseController
         } elseif ($type === 'postgresql') {
             // PostgreSQL: Create user and database with proper isolation
             // 1. Create user with connection limit
-            $createUser = "CREATE USER {$dbUser} WITH PASSWORD '{$dbPassword}' CONNECTION LIMIT 10;";
+            $createUser = "CREATE USER {$dbUser} WITH PASSWORD '{$dbPassword}' CONNECTION LIMIT 10 NOCREATEDB NOCREATEROLE;";
             // 2. Create database owned by this user
             $createDb = "CREATE DATABASE {$dbName} OWNER {$dbUser};";
             // 3. Grant privileges only on this database
             $grantPrivs = "GRANT ALL PRIVILEGES ON DATABASE {$dbName} TO {$dbUser};";
             // 4. Revoke public access to prevent cross-database access
             $revokePublic = "REVOKE ALL ON DATABASE {$dbName} FROM PUBLIC;";
-            // 5. Revoke connect on other databases (extra security)
-            $revokeConnect = "REVOKE CONNECT ON DATABASE postgres FROM {$dbUser};";
+            // 5. Revoke connect on system databases (extra security)
+            $revokePostgres = "REVOKE CONNECT ON DATABASE postgres FROM {$dbUser};";
+            $revokeTemplate1 = "REVOKE CONNECT ON DATABASE template1 FROM {$dbUser};";
 
             // Execute each command separately for PostgreSQL
             $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $createUser]);
             $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $createDb]);
             $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $grantPrivs]);
             $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $revokePublic]);
-            $result = $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $revokeConnect]);
+            $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $revokePostgres]);
+            $result = $this->docker->execInContainer($containerName, ['psql', '-U', 'postgres', '-c', $revokeTemplate1]);
 
             return ['success' => true, 'output' => $result];
 
