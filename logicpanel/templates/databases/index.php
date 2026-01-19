@@ -197,9 +197,9 @@ if ($selectedService) {
                         <div class="form-group mt-20">
                             <label class="form-label">Connection String</label>
                             <?php
-                            // Get actual password from database record
-                            // Use getRawOriginal to bypass $hidden attribute
-                            $password = $database->getRawOriginal('db_password') ?? $database->db_password ?? '';
+                            // Get DECRYPTED password - this is set by DatabaseController
+                            // db_password_decrypted contains the actual password user can use
+                            $password = $database->db_password_decrypted ?? '';
 
                             // URL-encode username and password for special characters
                             $encodedUser = rawurlencode($database->db_user);
@@ -241,8 +241,8 @@ if ($selectedService) {
                         <?php if ($database->type === 'mongodb'): ?>
                             <!-- MongoDB - Copy Connection String (Mongo Express is admin-only) -->
                             <?php
-                            // Use getRawOriginal to get actual password bypassing hidden attribute
-                            $mongoPassword = $database->getRawOriginal('db_password') ?? '';
+                            // Use decrypted password from controller
+                            $mongoPassword = $database->db_password_decrypted ?? '';
                             $mongoHost = $_ENV['SERVER_HOSTNAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
                             $mongoHost = preg_replace('/:\d+$/', '', $mongoHost);
                             // URL-encode username and password for special characters
