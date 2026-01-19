@@ -34,7 +34,7 @@ class ServiceController extends BaseController
         return $this->render($response, 'services/create', [
             'title' => 'Create New Service',
             'packages' => $packages,
-            'current_page' => 'services'
+            'current_page' => 'service_create'
         ]);
     }
 

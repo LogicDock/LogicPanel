@@ -11,6 +11,11 @@
             <i data-lucide="layout-grid"></i>
             <span>Tools</span>
         </a>
+        <a href="<?= $base_url ?? '' ?>/services/create"
+            class="lp-nav-item <?= ($current_page ?? '') === 'service_create' ? 'active' : '' ?>">
+            <i data-lucide="plus-circle"></i>
+            <span>Create Service</span>
+        </a>
 
         <?php if (isset($service_id)): ?>
             <!-- Active Service Context -->
