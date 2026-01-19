@@ -1,0 +1,323 @@
+/**
+ * LogicPanel Adminer Theme
+ * Modern dark/light mode theme matching LogicPanel design
+ * Auto-injected during LogicPanel installation
+ */
+
+/* ===== CSS Variables for Theme System ===== */
+:root {
+    /* Light Theme (Default) */
+    --lp-bg-primary: #f5f6f8;
+    --lp-bg-secondary: #ffffff;
+    --lp-bg-card: #ffffff;
+    --lp-bg-input: #f8f9fa;
+    --lp-bg-hover: #e9ecef;
+    --lp-text-primary: #333333;
+    --lp-text-secondary: #666666;
+    --lp-text-muted: #999999;
+    --lp-border: #e3e6e8;
+    --lp-accent: #3C873A;
+    --lp-accent-hover: #4E9C4B;
+    --lp-success: #4CAF50;
+    --lp-warning: #FF9800;
+    --lp-danger: #f44336;
+    --lp-info: #2196F3;
+    --lp-shadow: rgba(0, 0, 0, 0.08);
+}
+
+/* Dark Theme */
+[data-theme="dark"], .dark-mode {
+    --lp-bg-primary: #1a1d21;
+    --lp-bg-secondary: #252830;
+    --lp-bg-card: #2d313a;
+    --lp-bg-input: #1e2127;
+    --lp-bg-hover: #3e4249;
+    --lp-text-primary: #e4e6eb;
+    --lp-text-secondary: #b0b3b8;
+    --lp-text-muted: #8a8d91;
+    --lp-border: #3e4249;
+    --lp-shadow: rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Base Styles ===== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--lp-bg-primary) !important;
+    color: var(--lp-text-primary) !important;
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+/* ===== Theme Toggle Button ===== */
+#theme-toggle {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    z-index: 10000;
+    background: var(--lp-bg-card);
+    border: 1px solid var(--lp-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--lp-text-primary);
+    font-size: 14px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px var(--lp-shadow);
+}
+
+#theme-toggle:hover {
+    background: var(--lp-bg-hover);
+    transform: translateY(-1px);
+}
+
+#theme-toggle svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ===== Header & Navigation ===== */
+#menu {
+    background: var(--lp-bg-card) !important;
+    border: 1px solid var(--lp-border) !important;
+    border-radius: 8px !important;
+    padding: 15px !important;
+    margin-bottom: 20px !important;
+    box-shadow: 0 2px 8px var(--lp-shadow) !important;
+}
+
+#menu h1 {
+    color: var(--lp-accent) !important;
+    font-size: 1.5rem !important;
+    margin: 0 0 15px 0 !important;
+    padding-bottom: 10px !important;
+    border-bottom: 2px solid var(--lp-accent) !important;
+}
+
+#menu a, #menu span {
+    color: var(--lp-text-primary) !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease !important;
+}
+
+#menu a:hover {
+    color: var(--lp-accent) !important;
+}
+
+/* ===== Tables ===== */
+table {
+    background: var(--lp-bg-card) !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px var(--lp-shadow) !important;
+    margin: 15px 0 !important;
+}
+
+thead tr, .odd {
+    background: var(--lp-bg-secondary) !important;
+}
+
+th {
+    background: var(--lp-bg-hover) !important;
+    color: var(--lp-text-primary) !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    padding: 12px 15px !important;
+    border-bottom: 2px solid var(--lp-border) !important;
+}
+
+td {
+    padding: 10px 15px !important;
+    border-bottom: 1px solid var(--lp-border) !important;
+    color: var(--lp-text-primary) !important;
+}
+
+tr:hover td {
+    background: var(--lp-bg-hover) !important;
+}
+
+/* ===== Forms ===== */
+input, select, textarea {
+    background: var(--lp-bg-input) !important;
+    border: 1px solid var(--lp-border) !important;
+    border-radius: 6px !important;
+    padding: 10px 12px !important;
+    color: var(--lp-text-primary) !important;
+    font-size: 14px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none !important;
+    border-color: var(--lp-accent) !important;
+    box-shadow: 0 0 0 3px rgba(60, 135, 58, 0.15) !important;
+}
+
+input[type="submit"], button, .button {
+    background: var(--lp-accent) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 10px 20px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+input[type="submit"]:hover, button:hover, .button:hover {
+    background: var(--lp-accent-hover) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ===== Links ===== */
+a {
+    color: var(--lp-accent) !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease !important;
+}
+
+a:hover {
+    color: var(--lp-accent-hover) !important;
+    text-decoration: underline !important;
+}
+
+/* ===== Fieldset & Legend ===== */
+fieldset {
+    background: var(--lp-bg-card) !important;
+    border: 1px solid var(--lp-border) !important;
+    border-radius: 8px !important;
+    padding: 20px !important;
+    margin: 15px 0 !important;
+}
+
+legend {
+    background: var(--lp-accent) !important;
+    color: #ffffff !important;
+    padding: 5px 15px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+}
+
+/* ===== Code & Pre ===== */
+code, pre {
+    background: var(--lp-bg-input) !important;
+    border: 1px solid var(--lp-border) !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-family: 'Fira Code', 'Consolas', monospace !important;
+    font-size: 13px !important;
+    color: var(--lp-text-primary) !important;
+}
+
+pre {
+    padding: 15px !important;
+    overflow-x: auto !important;
+}
+
+/* ===== Messages ===== */
+.message {
+    padding: 12px 16px !important;
+    border-radius: 6px !important;
+    margin: 15px 0 !important;
+    font-weight: 500 !important;
+}
+
+.message.success, .message:not(.error) {
+    background: rgba(76, 175, 80, 0.15) !important;
+    border: 1px solid var(--lp-success) !important;
+    color: var(--lp-success) !important;
+}
+
+.message.error, .error {
+    background: rgba(244, 67, 54, 0.15) !important;
+    border: 1px solid var(--lp-danger) !important;
+    color: var(--lp-danger) !important;
+}
+
+/* ===== Breadcrumb ===== */
+#breadcrumb {
+    background: var(--lp-bg-card) !important;
+    padding: 10px 15px !important;
+    border-radius: 6px !important;
+    margin-bottom: 20px !important;
+    border: 1px solid var(--lp-border) !important;
+}
+
+#breadcrumb a {
+    color: var(--lp-text-secondary) !important;
+}
+
+#breadcrumb a:last-child {
+    color: var(--lp-accent) !important;
+    font-weight: 600 !important;
+}
+
+/* ===== Scrollbar (Webkit) ===== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--lp-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--lp-border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--lp-text-muted);
+}
+
+/* ===== Login Page ===== */
+#logins {
+    background: var(--lp-bg-card) !important;
+    border-radius: 12px !important;
+    padding: 30px !important;
+    max-width: 400px !important;
+    margin: 50px auto !important;
+    box-shadow: 0 4px 20px var(--lp-shadow) !important;
+    border: 1px solid var(--lp-border) !important;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    body {
+        padding: 10px !important;
+    }
+    
+    table {
+        font-size: 13px !important;
+    }
+    
+    th, td {
+        padding: 8px 10px !important;
+    }
+}
+
+/* ===== LogicPanel Branding ===== */
+#menu h1::before {
+    content: "🗄️ ";
+}
+
+/* Footer branding */
+body::after {
+    content: "Powered by LogicPanel";
+    display: block;
+    text-align: center;
+    padding: 20px;
+    color: var(--lp-text-muted);
+    font-size: 12px;
+    margin-top: 40px;
+}
