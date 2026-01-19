@@ -218,6 +218,7 @@ $app->group('/admin', function (RouteCollectorProxy $admin) {
     $admin->post('/api-keys/{id}/delete', [DashboardController::class, 'deleteApiKey']);
 
     // Service Actions (Admin can suspend/terminate any service)
+    $admin->post('/services/create', [ServiceController::class, 'adminCreateService'])->setName('admin.service.create');
     $admin->post('/services/{id}/suspend', [ServiceController::class, 'adminSuspend'])->setName('admin.service.suspend');
     $admin->post('/services/{id}/unsuspend', [ServiceController::class, 'adminUnsuspend'])->setName('admin.service.unsuspend');
     $admin->post('/services/{id}/terminate', [ServiceController::class, 'adminTerminate'])->setName('admin.service.terminate');

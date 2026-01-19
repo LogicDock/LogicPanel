@@ -680,4 +680,190 @@ class ServiceController extends BaseController
             'message' => 'Service terminated and all data deleted'
         ]);
     }
+
+    /**
+     * Admin: Create new service (Standalone Mode)
+     */
+    public function adminCreateService(Request $request, Response $response): Response
+    {
+        $data = json_decode($request->getBody()->getContents(), true);
+        $admin = $request->getAttribute('user');
+
+        // Validate required fields
+        if (empty($data['service_name']) || empty($data['domain'])) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Service name and domain are required'
+            ], 400);
+        }
+
+        // Get or create user
+        $userId = null;
+        if (!empty($data['new_user'])) {
+            // Create new user
+            $newUser = $data['new_user'];
+            
+            if (empty($newUser['name']) || empty($newUser['email']) || empty($newUser['username']) || empty($newUser['password'])) {
+                return $this->jsonResponse($response, [
+                    'success' => false,
+                    'error' => 'All new user fields are required'
+                ], 400);
+            }
+
+            // Check if email/username exists
+            $exists = \LogicPanel\Models\User::where('email', $newUser['email'])
+                ->orWhere('username', $newUser['username'])
+                ->first();
+            
+            if ($exists) {
+                return $this->jsonResponse($response, [
+                    'success' => false,
+                    'error' => 'User with this email or username already exists'
+                ], 400);
+            }
+
+            $user = new \LogicPanel\Models\User();
+            $user->name = $newUser['name'];
+            $user->email = $newUser['email'];
+            $user->username = $newUser['username'];
+            $user->password = $newUser['password']; // Will be hashed by model
+            $user->role = 'user';
+            $user->is_active = true;
+            $user->save();
+            
+            $userId = $user->id;
+        } else {
+            $userId = (int) ($data['user_id'] ?? 0);
+            if (!$userId) {
+                return $this->jsonResponse($response, [
+                    'success' => false,
+                    'error' => 'User selection is required'
+                ], 400);
+            }
+        }
+
+        // Get package
+        $packageId = (int) ($data['package_id'] ?? 0);
+        $package = \LogicPanel\Models\Package::find($packageId);
+        if (!$package) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Invalid package selected'
+            ], 400);
+        }
+
+        // Create service
+        $service = new Service();
+        $service->user_id = $userId;
+        $service->package_id = $packageId;
+        $service->name = $this->sanitizeServiceName($data['service_name']);
+        $service->plan = $package->name;
+        $service->status = 'pending';
+        $service->runtime = $data['runtime'] ?? 'nodejs';
+        $service->git_repo = $data['git_repo'] ?? null;
+        $service->git_branch = $data['git_branch'] ?? 'main';
+        $service->env_vars = json_encode([]);
+        $service->save();
+
+        // Create primary domain
+        $domain = new Domain();
+        $domain->service_id = $service->id;
+        $domain->domain = strtolower(trim($data['domain']));
+        $domain->is_primary = true;
+        $domain->ssl_enabled = true;
+        $domain->save();
+
+        // Try to provision container
+        try {
+            $containerResult = $this->provisionContainer($service, $package);
+            if ($containerResult['success']) {
+                $service->container_id = $containerResult['container_id'];
+                $service->status = 'running';
+                $service->provisioned_at = date('Y-m-d H:i:s');
+            } else {
+                $service->status = 'error';
+                $service->error_message = $containerResult['error'] ?? 'Container provisioning failed';
+            }
+            $service->save();
+        } catch (\Exception $e) {
+            $service->status = 'error';
+            $service->error_message = $e->getMessage();
+            $service->save();
+        }
+
+        // Log activity
+        $this->logActivity($admin->id, $service->id, 'admin_create_service', 
+            "Admin created service '{$service->name}' for user #{$userId}");
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Service created successfully',
+            'service_id' => $service->id,
+            'status' => $service->status
+        ]);
+    }
+
+    /**
+     * Sanitize service name for container naming
+     */
+    private function sanitizeServiceName(string $name): string
+    {
+        $name = strtolower(trim($name));
+        $name = preg_replace('/[^a-z0-9\-]/', '-', $name);
+        $name = preg_replace('/-+/', '-', $name);
+        $name = trim($name, '-');
+        return substr($name, 0, 50) ?: 'service-' . time();
+    }
+
+    /**
+     * Provision container for service
+     */
+    private function provisionContainer(Service $service, \LogicPanel\Models\Package $package): array
+    {
+        $containerName = 'lp-' . $service->name . '-' . $service->id;
+        
+        // Determine image based on runtime
+        $images = [
+            'nodejs' => 'node:18-alpine',
+            'python' => 'python:3.11-alpine',
+            'php' => 'php:8.2-fpm-alpine',
+            'static' => 'nginx:alpine'
+        ];
+        $image = $images[$service->runtime] ?? 'node:18-alpine';
+
+        // Build container config
+        $config = [
+            'Image' => $image,
+            'name' => $containerName,
+            'Hostname' => $containerName,
+            'Env' => [
+                'SERVICE_ID=' . $service->id,
+                'RUNTIME=' . $service->runtime
+            ],
+            'HostConfig' => [
+                'Memory' => $package->memory_limit * 1024 * 1024,
+                'NanoCPUs' => (int) ($package->cpu_limit * 1000000000),
+                'RestartPolicy' => ['Name' => 'unless-stopped']
+            ],
+            'Labels' => [
+                'logicpanel.service_id' => (string) $service->id,
+                'logicpanel.user_id' => (string) $service->user_id
+            ]
+        ];
+
+        // Create and start container
+        $createResult = $this->docker->createContainer($config, $containerName);
+        if (!$createResult || empty($createResult['Id'])) {
+            return ['success' => false, 'error' => 'Failed to create container'];
+        }
+
+        $containerId = $createResult['Id'];
+        $startResult = $this->docker->startContainer($containerId);
+        
+        if ($startResult === false) {
+            return ['success' => false, 'error' => 'Failed to start container'];
+        }
+
+        return ['success' => true, 'container_id' => $containerId];
+    }
 }

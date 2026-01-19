@@ -226,13 +226,18 @@ class DashboardController extends BaseController
      */
     public function adminServices(Request $request, Response $response): Response
     {
-        $services = Service::with(['user', 'primaryDomain'])
+        $services = Service::with(['user', 'primaryDomain', 'package'])
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $users = User::orderBy('name')->get();
+        $packages = \LogicPanel\Models\Package::where('is_active', true)->orderBy('sort_order')->get();
+
         return $this->render($response, 'admin/services', [
             'title' => 'Services - LogicPanel Admin',
-            'services' => $services
+            'services' => $services,
+            'users' => $users,
+            'packages' => $packages
         ]);
     }
 
