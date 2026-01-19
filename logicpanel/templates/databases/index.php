@@ -634,17 +634,19 @@ if ($selectedService) {
         top: 20px;
         right: 20px;
         padding: 12px 20px;
-        background: var(--card-bg);
-        border: 1px solid var(--border);
+        background: #2d313a;
+        /* Solid dark background */
+        border: 1px solid #3e4249;
         border-radius: 8px;
         display: flex;
         align-items: center;
         gap: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         z-index: 10000;
         opacity: 0;
         transform: translateX(100%);
         transition: all 0.3s ease;
+        color: #e4e6eb;
     }
 
     .toast.show {
@@ -695,18 +697,21 @@ if ($selectedService) {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.85);
+        /* More opaque backdrop */
     }
 
     .confirm-content {
         position: relative;
-        background: var(--card-bg);
-        border: 1px solid var(--border);
+        background: #2d313a;
+        /* Solid dark background */
+        border: 1px solid #3e4249;
         border-radius: 12px;
         padding: 24px;
         max-width: 400px;
         width: 90%;
         animation: modalIn 0.2s ease;
+        color: #e4e6eb;
     }
 
     @keyframes modalIn {
@@ -726,6 +731,12 @@ if ($selectedService) {
         display: flex;
         align-items: center;
         gap: 8px;
+        color: #e4e6eb;
+    }
+
+    .confirm-content p {
+        color: #b0b3b8;
+        margin: 0 0 10px 0;
     }
 
     .confirm-actions {
@@ -733,6 +744,32 @@ if ($selectedService) {
         gap: 10px;
         justify-content: flex-end;
         margin-top: 20px;
+    }
+
+    .confirm-actions .btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+    }
+
+    .confirm-actions .btn-secondary {
+        background: #4a4f59;
+        color: #e4e6eb;
+    }
+
+    .confirm-actions .btn-secondary:hover {
+        background: #5a5f69;
+    }
+
+    .confirm-actions .btn-danger {
+        background: #dc3545;
+        color: #fff;
+    }
+
+    .confirm-actions .btn-danger:hover {
+        background: #c82333;
     }
 </style>
 
