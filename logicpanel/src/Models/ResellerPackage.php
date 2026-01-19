@@ -50,6 +50,14 @@ class ResellerPackage extends Model
     }
 
     /**
+     * Alias for resellers() - for compatibility
+     */
+    public function users()
+    {
+        return $this->resellers();
+    }
+
+    /**
      * Get active packages only
      */
     public static function active()

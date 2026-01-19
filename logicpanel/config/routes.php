@@ -163,7 +163,9 @@ $app->get('/api/packages', [ApiController::class, 'listPackages']);
 // Reseller Routes (Admin + Reseller only)
 // ============================================
 
+
 use LogicPanel\Controllers\ResellerController;
+use LogicPanel\Middleware\ResellerMiddleware;
 
 $app->group('/reseller', function (RouteCollectorProxy $reseller) {
     // Reseller Dashboard
@@ -183,15 +185,7 @@ $app->group('/reseller', function (RouteCollectorProxy $reseller) {
     $reseller->get('/packages', [ResellerController::class, 'listPackages'])->setName('reseller.packages');
     $reseller->get('/packages/create', [ResellerController::class, 'createPackageForm'])->setName('reseller.packages.create');
     $reseller->post('/packages/create', [ResellerController::class, 'createPackage']);
-})->add(new AuthMiddleware($container))->add(function ($request, $handler) {
-    // Role check: only admin and reseller can access
-    $user = $request->getAttribute('user');
-    if ($user && ($user->role === 'admin' || $user->role === 'reseller')) {
-        return $handler->handle($request);
-    }
-    $response = new \Slim\Psr7\Response();
-    return $response->withHeader('Location', '/')->withStatus(302);
-});
+})->add(new ResellerMiddleware())->add(new AuthMiddleware($container));
 
 // ============================================
 // Admin Routes
