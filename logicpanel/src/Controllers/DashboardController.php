@@ -847,7 +847,7 @@ class DashboardController extends BaseController
         $package->max_bandwidth_gb = $data['max_bandwidth_gb'] ?? 1000;
         $package->can_create_packages = $data['can_create_packages'] ?? true;
         $package->is_active = $data['is_active'] ?? true;
-        $package->sort_order = \LogicPanel\Models\ResellerPackage::max('sort_order') + 1;
+        //$package->sort_order = \LogicPanel\Models\ResellerPackage::max('sort_order') + 1;
         $package->save();
 
         return $this->jsonResponse($response, [
