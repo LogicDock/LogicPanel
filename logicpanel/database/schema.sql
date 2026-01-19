@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS `lp_users` (
     `theme` ENUM('light', 'dark', 'auto') DEFAULT 'auto',
     `whmcs_user_id` INT UNSIGNED NULL,
     `is_active` TINYINT(1) DEFAULT 1,
+    `two_factor_enabled` TINYINT(1) DEFAULT 0,
+    `two_factor_secret` VARCHAR(255) NULL,
     `last_login` DATETIME NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
