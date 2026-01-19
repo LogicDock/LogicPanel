@@ -124,6 +124,11 @@ $app->group('', function (RouteCollectorProxy $group) {
     $group->post('/settings', [DashboardController::class, 'updateSettings']);
     $group->post('/settings/theme', [DashboardController::class, 'updateTheme'])->setName('settings.theme');
 
+    // Two-Factor Authentication
+    $group->post('/settings/2fa/setup', [DashboardController::class, 'setup2FA'])->setName('settings.2fa.setup');
+    $group->post('/settings/2fa/verify', [DashboardController::class, 'verify2FA'])->setName('settings.2fa.verify');
+    $group->post('/settings/2fa/disable', [DashboardController::class, 'disable2FA'])->setName('settings.2fa.disable');
+
 })->add(new AuthMiddleware($container));
 
 // ============================================

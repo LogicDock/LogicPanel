@@ -167,6 +167,184 @@ class DashboardController extends BaseController
     }
 
     /**
+     * Setup 2FA - Generate secret and QR code
+     */
+    public function setup2FA(Request $request, Response $response): Response
+    {
+        $user = $request->getAttribute('user');
+
+        // Generate a random secret (Base32 encoded)
+        $secret = $this->generateTOTPSecret();
+
+        // Generate QR code URL (using Google Charts API)
+        $issuer = urlencode('LogicPanel');
+        $accountName = urlencode($user->email);
+        $otpauthUrl = "otpauth://totp/{$issuer}:{$accountName}?secret={$secret}&issuer={$issuer}";
+        $qrUrl = "https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=" . urlencode($otpauthUrl);
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'secret' => $secret,
+            'qr_url' => $qrUrl
+        ]);
+    }
+
+    /**
+     * Verify and enable 2FA
+     */
+    public function verify2FA(Request $request, Response $response): Response
+    {
+        $user = $request->getAttribute('user');
+        $data = json_decode($request->getBody()->getContents(), true);
+
+        $code = $data['code'] ?? '';
+        $secret = $data['secret'] ?? '';
+
+        if (empty($code) || empty($secret)) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Code and secret are required'
+            ], 400);
+        }
+
+        // Verify the TOTP code
+        if (!$this->verifyTOTPCode($secret, $code)) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Invalid verification code'
+            ], 400);
+        }
+
+        // Enable 2FA for user
+        $user->two_factor_secret = $secret;
+        $user->two_factor_enabled = true;
+        $user->save();
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => '2FA enabled successfully'
+        ]);
+    }
+
+    /**
+     * Disable 2FA
+     */
+    public function disable2FA(Request $request, Response $response): Response
+    {
+        $user = $request->getAttribute('user');
+        $data = json_decode($request->getBody()->getContents(), true);
+
+        $password = $data['password'] ?? '';
+
+        if (empty($password)) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Password is required'
+            ], 400);
+        }
+
+        // Verify password
+        if (!$user->verifyPassword($password)) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Invalid password'
+            ], 400);
+        }
+
+        // Disable 2FA
+        $user->two_factor_secret = null;
+        $user->two_factor_enabled = false;
+        $user->save();
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => '2FA disabled successfully'
+        ]);
+    }
+
+    /**
+     * Generate TOTP Secret (Base32)
+     */
+    private function generateTOTPSecret(int $length = 16): string
+    {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $secret = '';
+        for ($i = 0; $i < $length; $i++) {
+            $secret .= $chars[random_int(0, 31)];
+        }
+        return $secret;
+    }
+
+    /**
+     * Verify TOTP Code
+     */
+    private function verifyTOTPCode(string $secret, string $code, int $window = 1): bool
+    {
+        $timestamp = floor(time() / 30);
+
+        for ($i = -$window; $i <= $window; $i++) {
+            $expectedCode = $this->generateTOTPCode($secret, $timestamp + $i);
+            if (hash_equals($expectedCode, str_pad($code, 6, '0', STR_PAD_LEFT))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Generate TOTP Code
+     */
+    private function generateTOTPCode(string $secret, int $timestamp): string
+    {
+        // Decode Base32 secret
+        $secretKey = $this->base32Decode($secret);
+
+        // Pack timestamp
+        $time = pack('N*', 0) . pack('N*', $timestamp);
+
+        // Generate HMAC
+        $hash = hash_hmac('sha1', $time, $secretKey, true);
+
+        // Dynamic truncation
+        $offset = ord($hash[strlen($hash) - 1]) & 0x0F;
+        $code = (
+            ((ord($hash[$offset]) & 0x7F) << 24) |
+            ((ord($hash[$offset + 1]) & 0xFF) << 16) |
+            ((ord($hash[$offset + 2]) & 0xFF) << 8) |
+            (ord($hash[$offset + 3]) & 0xFF)
+        ) % 1000000;
+
+        return str_pad((string) $code, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Decode Base32
+     */
+    private function base32Decode(string $input): string
+    {
+        $map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $input = strtoupper($input);
+        $input = str_replace('=', '', $input);
+
+        $length = strlen($input);
+        $buffer = 0;
+        $bitsLeft = 0;
+        $result = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $buffer = ($buffer << 5) | strpos($map, $input[$i]);
+            $bitsLeft += 5;
+
+            if ($bitsLeft >= 8) {
+                $bitsLeft -= 8;
+                $result .= chr(($buffer >> $bitsLeft) & 0xFF);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Admin dashboard
      */
     public function adminDashboard(Request $request, Response $response): Response
