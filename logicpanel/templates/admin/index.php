@@ -126,6 +126,91 @@ ob_start();
     </div>
 </div>
 
+<!-- Services Management -->
+<div class="card mt-20">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="server"></i>
+            All Services
+        </h2>
+        <a href="<?= $base_url ?? '' ?>/admin/services" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <?php if (empty($services) || (method_exists($services, 'isEmpty') && $services->isEmpty())): ?>
+            <p class="text-muted" style="padding: 15px;">No services found</p>
+        <?php else: ?>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>User</th>
+                            <th>Domain</th>
+                            <th>Status</th>
+                            <th style="width: 180px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($services as $service): ?>
+                            <tr>
+                                <td>
+                                    <strong><?= htmlspecialchars($service->name ?? 'Unnamed') ?></strong>
+                                    <br><small
+                                        class="text-muted"><?= htmlspecialchars($service->container_id ? substr($service->container_id, 0, 12) : 'N/A') ?></small>
+                                </td>
+                                <td>
+                                    <?= htmlspecialchars($service->user->name ?? 'Unknown') ?>
+                                    <br><small class="text-muted"><?= htmlspecialchars($service->user->email ?? '') ?></small>
+                                </td>
+                                <td>
+                                    <?php if ($service->primaryDomain): ?>
+                                        <a href="https://<?= htmlspecialchars($service->primaryDomain->domain) ?>" target="_blank"
+                                            class="text-primary">
+                                            <?= htmlspecialchars($service->primaryDomain->domain) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted">No domain</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($service->status === 'running'): ?>
+                                        <span class="badge badge-success"><span class="badge-dot"></span> Running</span>
+                                    <?php elseif ($service->status === 'suspended'): ?>
+                                        <span class="badge badge-warning"><span class="badge-dot"></span> Suspended</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary"><span class="badge-dot"></span>
+                                            <?= ucfirst($service->status ?? 'Unknown') ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <?php if ($service->status === 'suspended'): ?>
+                                            <button onclick="unsuspendService(<?= $service->id ?>)" class="btn btn-sm btn-secondary"
+                                                title="Unsuspend">
+                                                <i data-lucide="play"></i>
+                                            </button>
+                                        <?php else: ?>
+                                            <button onclick="suspendService(<?= $service->id ?>)" class="btn btn-sm btn-warning"
+                                                title="Suspend">
+                                                <i data-lucide="pause"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                        <button
+                                            onclick="terminateService(<?= $service->id ?>, '<?= htmlspecialchars($service->name ?? '') ?>')"
+                                            class="btn btn-sm btn-danger" title="Terminate">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <style>
     /* Admin Stats Grid - Responsive */
     .admin-stats-grid {
@@ -231,7 +316,89 @@ ob_start();
             gap: 5px;
         }
     }
+
+    .mt-20 {
+        margin-top: 20px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-warning {
+        background: var(--warning);
+        color: white;
+        border-color: var(--warning);
+    }
+
+    .btn-warning:hover {
+        background: #e68900;
+    }
 </style>
+
+<script>
+    async function suspendService(id) {
+        if (!confirm('Are you sure you want to suspend this service?')) return;
+
+        try {
+            const response = await fetch(`<?= $base_url ?? '' ?>/admin/services/${id}/suspend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert(result.error || 'Failed to suspend service');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function unsuspendService(id) {
+        if (!confirm('Are you sure you want to unsuspend this service?')) return;
+
+        try {
+            const response = await fetch(`<?= $base_url ?? '' ?>/admin/services/${id}/unsuspend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert(result.error || 'Failed to unsuspend service');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function terminateService(id, name) {
+        if (!confirm(`Are you sure you want to PERMANENTLY DELETE "${name}"? This action cannot be undone!`)) return;
+        if (!confirm('Are you ABSOLUTELY SURE? All data will be lost!')) return;
+
+        try {
+            const response = await fetch(`<?= $base_url ?? '' ?>/admin/services/${id}/terminate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert(result.error || 'Failed to terminate service');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+</script>
 
 <?php
 $content = ob_get_clean();

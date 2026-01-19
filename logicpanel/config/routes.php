@@ -216,5 +216,10 @@ $app->group('/admin', function (RouteCollectorProxy $admin) {
     $admin->post('/api-keys/create', [DashboardController::class, 'createApiKey']);
     $admin->post('/api-keys/{id}/toggle', [DashboardController::class, 'toggleApiKey']);
     $admin->post('/api-keys/{id}/delete', [DashboardController::class, 'deleteApiKey']);
+
+    // Service Actions (Admin can suspend/terminate any service)
+    $admin->post('/services/{id}/suspend', [ServiceController::class, 'adminSuspend'])->setName('admin.service.suspend');
+    $admin->post('/services/{id}/unsuspend', [ServiceController::class, 'adminUnsuspend'])->setName('admin.service.unsuspend');
+    $admin->post('/services/{id}/terminate', [ServiceController::class, 'adminTerminate'])->setName('admin.service.terminate');
 })->add(new AuthMiddleware($container, true)); // true = admin only
 

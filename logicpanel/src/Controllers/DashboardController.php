@@ -192,12 +192,19 @@ class DashboardController extends BaseController
             ->limit(20)
             ->get();
 
+        // All services for admin management
+        $services = Service::with(['user', 'primaryDomain'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
         return $this->render($response, 'admin/index', [
             'title' => 'Admin Dashboard - LogicPanel',
             'stats' => $stats,
             'dockerConnected' => $dockerConnected,
             'dockerInfo' => $dockerInfo,
-            'recentActivity' => $recentActivity
+            'recentActivity' => $recentActivity,
+            'services' => $services
         ]);
     }
 

@@ -555,4 +555,129 @@ class ServiceController extends BaseController
             'created_at' => date('Y-m-d H:i:s')
         ]);
     }
+
+    // ============================================
+    // Admin Actions (no ownership check)
+    // ============================================
+
+    /**
+     * Admin: Suspend any service
+     */
+    public function adminSuspend(Request $request, Response $response, array $args): Response
+    {
+        $serviceId = (int) $args['id'];
+        $service = Service::find($serviceId);
+
+        if (!$service) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service not found'], 404);
+        }
+
+        // Stop container
+        if ($service->container_id) {
+            $this->docker->stopContainer($service->container_id);
+        }
+
+        $service->status = 'suspended';
+        $service->suspended_at = date('Y-m-d H:i:s');
+        $service->save();
+
+        $admin = $request->getAttribute('user');
+        $this->logActivity($admin->id, $service->id, 'admin_suspend', "Admin suspended service by {$admin->name}");
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Service suspended successfully'
+        ]);
+    }
+
+    /**
+     * Admin: Unsuspend any service
+     */
+    public function adminUnsuspend(Request $request, Response $response, array $args): Response
+    {
+        $serviceId = (int) $args['id'];
+        $service = Service::find($serviceId);
+
+        if (!$service) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service not found'], 404);
+        }
+
+        // Start container
+        if ($service->container_id) {
+            $this->docker->startContainer($service->container_id);
+        }
+
+        $service->status = 'running';
+        $service->suspended_at = null;
+        $service->save();
+
+        $admin = $request->getAttribute('user');
+        $this->logActivity($admin->id, $service->id, 'admin_unsuspend', "Admin unsuspended service by {$admin->name}");
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Service unsuspended successfully'
+        ]);
+    }
+
+    /**
+     * Admin: Terminate any service
+     */
+    public function adminTerminate(Request $request, Response $response, array $args): Response
+    {
+        $serviceId = (int) $args['id'];
+        $service = Service::with(['databases', 'domains'])->find($serviceId);
+
+        if (!$service) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service not found'], 404);
+        }
+
+        $admin = $request->getAttribute('user');
+        $serviceName = $service->name;
+        $userId = $service->user_id;
+
+        // Remove container
+        if ($service->container_id) {
+            try {
+                $this->docker->stopContainer($service->container_id);
+                $this->docker->removeContainer($service->container_id);
+            } catch (\Exception $e) {
+                // Log but continue
+            }
+        }
+
+        // Delete databases
+        foreach ($service->databases as $db) {
+            $db->delete();
+        }
+
+        // Delete domains
+        foreach ($service->domains as $domain) {
+            $domain->delete();
+        }
+
+        // Delete deployments
+        DB::table('deployments')->where('service_id', $serviceId)->delete();
+
+        // Delete backups
+        DB::table('backups')->where('service_id', $serviceId)->delete();
+
+        // Delete service
+        $service->delete();
+
+        // Log after delete (use user_id from before deletion)
+        DB::table('activity_log')->insert([
+            'user_id' => $admin->id,
+            'service_id' => null,
+            'action' => 'admin_terminate',
+            'description' => "Admin terminated service '{$serviceName}' (was owned by user #{$userId})",
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+
+        return $this->jsonResponse($response, [
+            'success' => true,
+            'message' => 'Service terminated and all data deleted'
+        ]);
+    }
 }
