@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - LogicPanel</title>
+    <link rel="icon" type="image/x-icon" href="<?= $base_url ?? '' ?>/favicon.ico">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -137,6 +138,58 @@
             font-size: 12px;
             color: #999999;
         }
+
+        /* 2FA Styles */
+        .twofa-info {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .twofa-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #3C873A 0%, #2D6A2E 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px auto;
+        }
+
+        .twofa-icon svg {
+            color: white;
+        }
+
+        .twofa-info h3 {
+            font-size: 16px;
+            color: #333333;
+            margin-bottom: 6px;
+        }
+
+        .twofa-info p {
+            font-size: 13px;
+            color: #666666;
+        }
+
+        .twofa-input {
+            text-align: center;
+            font-size: 24px !important;
+            letter-spacing: 8px;
+            font-family: monospace;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #3C873A;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -154,20 +207,50 @@
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="">
-                <div class="form-group">
-                    <label class="form-label">Username</label>
-                    <input type="text" name="username" class="form-control" placeholder="Enter username" required
-                        autofocus>
-                </div>
+            <?php if (!empty($require_2fa)): ?>
+                <!-- 2FA Code Input Step -->
+                <form method="POST" action="">
+                    <input type="hidden" name="pending_user_id" value="<?= htmlspecialchars($pending_user_id ?? '') ?>">
 
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control" placeholder="Enter password" required>
-                </div>
+                    <div class="twofa-info">
+                        <div class="twofa-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                                <path d="m9 12 2 2 4-4" />
+                            </svg>
+                        </div>
+                        <h3>Two-Factor Authentication</h3>
+                        <p>Enter the 6-digit code from your authenticator app</p>
+                    </div>
 
-                <button type="submit" class="btn-login">Sign In</button>
-            </form>
+                    <div class="form-group">
+                        <label class="form-label">Authentication Code</label>
+                        <input type="text" name="two_factor_code" class="form-control twofa-input" placeholder="000000"
+                            maxlength="6" pattern="[0-9]{6}" required autofocus autocomplete="off">
+                    </div>
+
+                    <button type="submit" class="btn-login">Verify</button>
+
+                    <a href="<?= $base_url ?? '' ?>/login" class="back-link">← Back to login</a>
+                </form>
+            <?php else: ?>
+                <!-- Normal Login Form -->
+                <form method="POST" action="">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control" placeholder="Enter username" required
+                            autofocus>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+                    </div>
+
+                    <button type="submit" class="btn-login">Sign In</button>
+                </form>
+            <?php endif; ?>
 
             <div class="login-footer">
                 <p class="login-footer-text">&copy; <?= date('Y') ?> LogicPanel. All rights reserved.</p>

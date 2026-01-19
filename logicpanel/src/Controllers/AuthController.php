@@ -41,6 +41,13 @@ class AuthController extends BaseController
         $data = $request->getParsedBody();
         $username = trim($data['username'] ?? '');
         $password = $data['password'] ?? '';
+        $twoFactorCode = $data['two_factor_code'] ?? '';
+        $pendingUserId = $data['pending_user_id'] ?? '';
+
+        // If this is a 2FA verification step
+        if (!empty($pendingUserId) && !empty($twoFactorCode)) {
+            return $this->verify2FALogin($request, $response, (int) $pendingUserId, $twoFactorCode);
+        }
 
         // Validate input
         if (empty($username) || empty($password)) {
@@ -73,6 +80,53 @@ class AuthController extends BaseController
             ]);
         }
 
+        // Check if 2FA is enabled
+        if ($user->two_factor_enabled) {
+            // Show 2FA code input
+            return $this->render($response, 'auth/login', [
+                'title' => 'Login - LogicPanel',
+                'require_2fa' => true,
+                'pending_user_id' => $user->id,
+                'username' => $username
+            ]);
+        }
+
+        // Complete login (no 2FA)
+        return $this->completeLogin($response, $user);
+    }
+
+    /**
+     * Verify 2FA code during login
+     */
+    private function verify2FALogin(Request $request, Response $response, int $userId, string $code): Response
+    {
+        $user = User::find($userId);
+
+        if (!$user || !$user->two_factor_enabled) {
+            return $this->render($response, 'auth/login', [
+                'title' => 'Login - LogicPanel',
+                'error' => 'Invalid login session'
+            ]);
+        }
+
+        // Verify the TOTP code
+        if (!$this->verifyTOTPCode($user->two_factor_secret, $code)) {
+            return $this->render($response, 'auth/login', [
+                'title' => 'Login - LogicPanel',
+                'require_2fa' => true,
+                'pending_user_id' => $user->id,
+                'error' => 'Invalid authentication code'
+            ]);
+        }
+
+        return $this->completeLogin($response, $user);
+    }
+
+    /**
+     * Complete the login process
+     */
+    private function completeLogin(Response $response, User $user): Response
+    {
         // Start session and log in user
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -93,6 +147,56 @@ class AuthController extends BaseController
         return $response
             ->withHeader('Location', '/')
             ->withStatus(302);
+    }
+
+    /**
+     * Verify TOTP Code (copied from DashboardController for use in login)
+     */
+    private function verifyTOTPCode(string $secret, string $code, int $window = 1): bool
+    {
+        $timestamp = floor(time() / 30);
+
+        for ($i = -$window; $i <= $window; $i++) {
+            $expectedCode = $this->generateTOTPCode($secret, $timestamp + $i);
+            if (hash_equals($expectedCode, str_pad($code, 6, '0', STR_PAD_LEFT))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function generateTOTPCode(string $secret, int $timestamp): string
+    {
+        $secretKey = $this->base32Decode($secret);
+        $time = pack('N*', 0) . pack('N*', $timestamp);
+        $hash = hash_hmac('sha1', $time, $secretKey, true);
+        $offset = ord($hash[strlen($hash) - 1]) & 0x0F;
+        $code = (
+            ((ord($hash[$offset]) & 0x7F) << 24) |
+            ((ord($hash[$offset + 1]) & 0xFF) << 16) |
+            ((ord($hash[$offset + 2]) & 0xFF) << 8) |
+            (ord($hash[$offset + 3]) & 0xFF)
+        ) % 1000000;
+        return str_pad((string) $code, 6, '0', STR_PAD_LEFT);
+    }
+
+    private function base32Decode(string $input): string
+    {
+        $map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $input = strtoupper(str_replace('=', '', $input));
+        $length = strlen($input);
+        $buffer = 0;
+        $bitsLeft = 0;
+        $result = '';
+        for ($i = 0; $i < $length; $i++) {
+            $buffer = ($buffer << 5) | strpos($map, $input[$i]);
+            $bitsLeft += 5;
+            if ($bitsLeft >= 8) {
+                $bitsLeft -= 8;
+                $result .= chr(($buffer >> $bitsLeft) & 0xFF);
+            }
+        }
+        return $result;
     }
 
     /**
