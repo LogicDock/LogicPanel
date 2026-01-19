@@ -53,6 +53,8 @@ $app->group('', function (RouteCollectorProxy $group) {
     // Services/Containers Management
     $group->group('/services', function (RouteCollectorProxy $services) {
         $services->get('', [ServiceController::class, 'index'])->setName('services');
+        $services->get('/create', [ServiceController::class, 'showCreate'])->setName('service.create');
+        $services->post('/create', [ServiceController::class, 'processCreate']);
         $services->get('/{id}', [ServiceController::class, 'show'])->setName('service.show');
         $services->post('/{id}/start', [ServiceController::class, 'start'])->setName('service.start');
         $services->post('/{id}/stop', [ServiceController::class, 'stop'])->setName('service.stop');

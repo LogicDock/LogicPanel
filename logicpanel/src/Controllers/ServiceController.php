@@ -9,6 +9,7 @@ namespace LogicPanel\Controllers;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use LogicPanel\Models\Service;
+use LogicPanel\Models\Package;
 use LogicPanel\Models\Domain;
 use LogicPanel\Services\DockerService;
 use Illuminate\Database\Capsule\Manager as DB;
@@ -20,6 +21,87 @@ class ServiceController extends BaseController
     public function __construct()
     {
         $this->docker = new DockerService();
+    }
+
+    /**
+     * Show create service form
+     */
+    public function showCreate(Request $request, Response $response): Response
+    {
+        $user = $request->getAttribute('user');
+        $packages = Package::all();
+
+        return $this->render($response, 'services/create', [
+            'title' => 'Create New Service',
+            'packages' => $packages,
+            'current_page' => 'services'
+        ]);
+    }
+
+    /**
+     * Process service creation
+     */
+    public function processCreate(Request $request, Response $response): Response
+    {
+        $user = $request->getAttribute('user');
+        $data = $request->getParsedBody();
+
+        // 1. Basic Validation
+        $name = $this->sanitizeName($data['name'] ?? '');
+        $runtime = $data['runtime'] ?? 'nodejs';
+        $packageId = (int) ($data['package_id'] ?? 0);
+
+        if (empty($name)) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service name is required'], 400);
+        }
+
+        // 2. Check Service Limit for User
+        $package = Package::find($user->package_id);
+        if (!$package) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Invalid user package'], 400);
+        }
+
+        $currentCount = Service::where('user_id', $user->id)->count();
+        if ($currentCount >= $package->max_services) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service limit reached for your package'], 400);
+        }
+
+        // 3. Create Service Record
+        $service = new Service();
+        $service->user_id = $user->id;
+        $service->package_id = $package->id;
+        $service->name = $name;
+        $service->runtime = $runtime;
+        $service->status = 'provisioning';
+        $service->port = ($runtime === 'nodejs' ? 3000 : ($runtime === 'python' ? 8000 : 80));
+        $service->save();
+
+        // 4. Assign Default Domain
+        $domain = new Domain();
+        $domain->service_id = $service->id;
+        $domain->domain = $name . '-' . $service->id . '.' . ($_ENV['APP_DOMAIN'] ?? 'logicpanel.io');
+        $domain->is_primary = true;
+        $domain->ssl_enabled = true;
+        $domain->save();
+
+        // 5. Trigger Container Provisioning
+        $result = $this->provisionContainer($service, $package);
+
+        if ($result['success']) {
+            $service->container_id = $result['container_id'];
+            $service->status = 'running';
+            $service->save();
+
+            return $this->jsonResponse($response, [
+                'success' => true,
+                'message' => 'Service created successfully',
+                'service_id' => $service->id
+            ]);
+        } else {
+            // Rollback record if docker fails
+            $service->delete();
+            return $this->jsonResponse($response, ['success' => false, 'error' => $result['error']], 500);
+        }
     }
 
     /**
@@ -756,7 +838,7 @@ class ServiceController extends BaseController
         $service = new Service();
         $service->user_id = $userId;
         $service->package_id = $packageId;
-        $service->name = $this->sanitizeServiceName($data['service_name']);
+        $service->name = $this->generateServiceName($data['service_name']);
         $service->plan = $package->name;
         $service->status = 'pending';
         $service->runtime = $data['runtime'] ?? 'nodejs';
@@ -813,9 +895,20 @@ class ServiceController extends BaseController
     }
 
     /**
-     * Sanitize service name for container naming
+     * Sanitize name for docker and domain
      */
-    private function sanitizeServiceName(string $name): string
+    private function sanitizeName(string $name): string
+    {
+        $name = strtolower(trim($name));
+        $name = preg_replace('/[^a-z0-9\-]/', '-', $name);
+        $name = preg_replace('/-+/', '-', $name);
+        return trim($name, '-');
+    }
+
+    /**
+     * Generate a unique service name
+     */
+    private function generateServiceName(string $name): string
     {
         $name = strtolower(trim($name));
         $name = preg_replace('/[^a-z0-9\-]/', '-', $name);
