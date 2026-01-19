@@ -144,6 +144,96 @@ ob_start();
         align-items: center;
         gap: 8px;
         cursor: pointer;
+        padding: 5px 0;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background-color: var(--bg-card);
+        margin: auto;
+        padding: 0;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        animation: modalSlideIn 0.2s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 0;
+        line-height: 1;
+    }
+
+    .modal-close:hover {
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        background-color: var(--bg-body);
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+    }
+
+    .d-flex {
+        display: flex;
+        align-items: center;
+    }
+
+    .gap-5 {
+        gap: 5px;
     }
 </style>
 

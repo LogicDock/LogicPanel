@@ -12,7 +12,7 @@
             <span>Tools</span>
         </a>
 
-        <?php if (in_array($_SESSION['user_role'] ?? '', ['admin', 'reseller'])): ?>
+        <?php if (($_SESSION['user_role'] ?? '') === 'reseller'): ?>
             <!-- Reseller Section -->
             <div class="lp-nav-section">Reseller</div>
             <a href="<?= $base_url ?? '' ?>/reseller"
