@@ -55,15 +55,18 @@ class ServiceController extends BaseController
             return $this->jsonResponse($response, ['success' => false, 'error' => 'Service name is required'], 400);
         }
 
-        // 2. Check Service Limit for User
-        $package = Package::find($user->package_id);
+        // 2. Validate Selected Package
+        $packageId = (int) ($data['package_id'] ?? 0);
+        $package = Package::find($packageId);
+
         if (!$package) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'Invalid user package'], 400);
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Please select a valid service plan.'], 400);
         }
 
+        // Check usage against the selected package limits
         $currentCount = Service::where('user_id', $user->id)->count();
         if ($currentCount >= $package->max_services) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service limit reached for your package'], 400);
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service limit reached for this plan.'], 400);
         }
 
         // 3. Create Service Record
