@@ -35,8 +35,7 @@ ob_start();
                                     onchange="updateResourceSummary()">
                                     <?php foreach ($packages as $pkg): ?>
                                         <option value="<?= $pkg->id ?>" data-memory="<?= $pkg->memory_limit ?>"
-                                            data-cpu="<?= $pkg->cpu_limit ?>" data-storage="<?= $pkg->storage_limit ?>"
-                                            data-price="<?= $pkg->price ?>">
+                                            data-cpu="<?= $pkg->cpu_limit ?>" data-storage="<?= $pkg->storage_limit ?>">
                                             <?= htmlspecialchars($pkg->name) ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -113,14 +112,10 @@ ob_start();
                     <div class="info-label">Storage</div>
                     <div class="info-value" id="summary-storage">--</div>
                 </div>
-                <div class="info-item p-3 bg-soft-success">
-                    <div class="info-label">Estimated Cost</div>
-                    <div class="info-value price-tag" id="summary-price">--</div>
-                </div>
             </div>
         </div>
 
-        <div class="info-card mt-3" style="border-style: dashed; opacity: 0.8;">
+        <div class="info-card mt-1" style="border-style: dashed; opacity: 0.8;">
             <div class="info-card-body p-3" style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
                 <i data-lucide="info" style="width:14px; margin-right:5px; vertical-align:middle;"></i>
                 New services are automatically assigned a subdomain and SSL certificate.
@@ -134,12 +129,11 @@ ob_start();
 
 <style>
     /* ==========================================
-       Layout Structure (Missing in previous edit)
+       Layout Structure
        ========================================== */
     .tools-layout {
         display: grid;
         grid-template-columns: 1fr 300px;
-        /* Fixed width for sidebar */
         gap: 24px;
         align-items: start;
         margin-top: 20px;
@@ -152,8 +146,8 @@ ob_start();
     }
 
     .tools-section {
-        background: var(--bg-card, #1e2127);
-        border: 1px solid var(--border-color, #2f343d);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         overflow: hidden;
     }
@@ -163,14 +157,15 @@ ob_start();
         align-items: center;
         gap: 12px;
         padding: 16px 20px;
-        background: rgba(255, 255, 255, 0.02);
-        border-bottom: 1px solid var(--border-color, #2f343d);
+        background: var(--bg-input);
+        /* Theme aware */
+        border-bottom: 1px solid var(--border-color);
     }
 
     .tools-section-title {
         font-size: 16px;
         font-weight: 600;
-        color: var(--text-primary, #fff);
+        color: var(--text-primary);
     }
 
     .tools-section-body {
@@ -187,20 +182,20 @@ ob_start();
     }
 
     .info-card {
-        background: var(--bg-card, #1e2127);
-        border: 1px solid var(--border-color, #2f343d);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     }
 
     .info-card-header {
         padding: 14px 20px;
-        background: rgba(255, 255, 255, 0.03);
+        background: var(--bg-input);
         font-size: 14px;
         font-weight: 600;
-        color: var(--text-primary, #fff);
-        border-bottom: 1px solid var(--border-color, #2f343d);
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         gap: 8px;
@@ -212,7 +207,7 @@ ob_start();
 
     .info-item {
         padding: 14px 20px;
-        border-bottom: 1px solid var(--border-color, #2f343d);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -224,22 +219,22 @@ ob_start();
 
     .info-label {
         font-size: 13px;
-        color: var(--text-muted, #9ca3af);
+        color: var(--text-muted);
     }
 
     .info-value {
         font-size: 14px;
         font-weight: 500;
-        color: var(--text-primary, #fff);
+        color: var(--text-primary);
     }
 
     /* ==========================================
-       Form & Controls Style
+       Form & Controls Style (Theme Aware)
        ========================================== */
     .form-control-custom {
-        background-color: #17191d !important;
-        border: 1px solid #3e4451 !important;
-        color: #e5e7eb !important;
+        background-color: var(--bg-input) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-primary) !important;
         border-radius: 6px;
         padding: 12px 16px;
         width: 100%;
@@ -248,13 +243,13 @@ ob_start();
     }
 
     .form-control-custom:focus {
-        border-color: var(--primary, #4CAF50) !important;
-        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 2px rgba(96, 125, 139, 0.15);
         outline: none;
     }
 
     .form-label {
-        color: #d1d5db;
+        color: var(--text-primary);
         font-weight: 500;
         font-size: 14px;
         margin-bottom: 8px;
@@ -279,8 +274,8 @@ ob_start();
     }
 
     .card-content {
-        background: #17191d;
-        border: 1px solid #3e4451;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         padding: 20px 10px;
         display: flex;
@@ -299,27 +294,32 @@ ob_start();
     }
 
     .card-content span {
-        color: #d1d5db;
+        color: var(--text-muted);
         font-size: 13px;
         font-weight: 500;
     }
 
     .runtime-card input:checked+.card-content {
-        border-color: var(--primary, #4CAF50);
-        background: rgba(76, 175, 80, 0.08);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        border-color: var(--primary);
+        background: rgba(96, 125, 139, 0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .runtime-card input:checked+.card-content span {
+        color: var(--primary);
+        font-weight: 600;
     }
 
     .runtime-card:hover .card-content {
-        border-color: #6b7280;
+        border-color: var(--text-muted);
         transform: translateY(-2px);
     }
 
     /* Deploy Button */
     .btn-deploy {
         width: 100%;
-        background: var(--primary, #4CAF50);
-        color: white;
+        background: var(--primary);
+        color: #fff;
         border: none;
         padding: 16px;
         border-radius: 6px;
@@ -339,18 +339,8 @@ ob_start();
         transform: translateY(-1px);
     }
 
-    .bg-soft-success {
-        background: rgba(16, 185, 129, 0.1) !important;
-    }
-
-    .price-tag {
-        color: #34d399 !important;
-        font-weight: 700;
-        font-size: 16px;
-    }
-
     .text-muted {
-        color: #6b7280 !important;
+        color: var(--text-muted) !important;
     }
 </style>
 
@@ -365,12 +355,10 @@ ob_start();
         const mem = opt.dataset.memory || '0';
         const cpu = opt.dataset.cpu || '0';
         const storage = opt.dataset.storage || '0';
-        const price = opt.dataset.price || '0.00';
 
         document.getElementById('summary-mem').textContent = mem + ' MB';
         document.getElementById('summary-cpu').textContent = cpu + ' Core';
         document.getElementById('summary-storage').textContent = storage + ' GB';
-        document.getElementById('summary-price').textContent = '$' + price + ' / mo';
     }
 
     // Initialize summary on load
@@ -398,14 +386,15 @@ ob_start();
             const result = await response.json();
 
             if (result.success) {
+                // Use SweetAlert for success message (Dark Mode Compatible)
                 Swal.fire({
                     icon: 'success',
                     title: 'Deployed!',
-                    text: 'Redirecting to overview...',
+                    text: 'Redirecting to service overview...',
                     timer: 1500,
                     showConfirmButton: false,
-                    background: '#1e2127',
-                    color: '#fff'
+                    background: getComputedStyle(document.body).getPropertyValue('--bg-card').trim(),
+                    color: getComputedStyle(document.body).getPropertyValue('--text-primary').trim()
                 }).then(() => {
                     window.location.href = '<?= $base_url ?>/services/' + result.service_id;
                 });
@@ -417,8 +406,8 @@ ob_start();
                 icon: 'error',
                 title: 'Error',
                 text: error.message,
-                background: '#1e2127',
-                color: '#fff'
+                background: getComputedStyle(document.body).getPropertyValue('--bg-card').trim(),
+                color: getComputedStyle(document.body).getPropertyValue('--text-primary').trim()
             });
             btn.disabled = false;
             btn.innerHTML = originalHtml;
