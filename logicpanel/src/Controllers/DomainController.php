@@ -241,6 +241,7 @@ class DomainController extends BaseController
 
     /**
      * Update container environment with new domains
+     * Since environment variables require container recreation
      */
     private function updateContainerDomains(Service $service): void
     {
@@ -248,16 +249,24 @@ class DomainController extends BaseController
             return;
         }
 
-        // Get all domains
-        $domains = Domain::where('service_id', $service->id)->pluck('domain')->toArray();
-        $virtualHost = implode(',', $domains);
-        $letsEncryptHost = implode(',', $domains);
+        // 1. Get current package for re-provisioning
+        $package = \LogicPanel\Models\Package::find($service->package_id);
+        if (!$package)
+            return;
 
-        // Recreate container with updated environment
-        // In production, this would use Docker Compose or similar
-        // For now, we'll restart the container which should pick up the label changes
+        // 2. Stop and remove old container
+        $oldContainerId = $service->container_id;
+        $this->docker->stopContainer($oldContainerId);
+        $this->docker->removeContainer($oldContainerId);
 
-        $this->docker->restartContainer($service->container_id);
+        // 3. Re-provision new container (this will pick up new domain list)
+        $serviceController = new \LogicPanel\Controllers\ServiceController();
+        $result = $serviceController->provisionContainer($service, $package);
+
+        if ($result['success']) {
+            $service->container_id = $result['container_id'];
+            $service->save();
+        }
     }
 
     /**

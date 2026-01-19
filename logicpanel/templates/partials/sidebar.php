@@ -12,6 +12,26 @@
             <span>Tools</span>
         </a>
 
+        <?php if (isset($service_id)): ?>
+            <!-- Active Service Context -->
+            <div class="lp-nav-section">Service Management</div>
+            <a href="<?= $base_url ?? '' ?>/services/<?= $service_id ?>"
+                class="lp-nav-item <?= ($current_page ?? '') === 'service_show' ? 'active' : '' ?>">
+                <i data-lucide="monitor"></i>
+                <span>Overview</span>
+            </a>
+            <a href="<?= $base_url ?? '' ?>/files/<?= $service_id ?>/manager"
+                class="lp-nav-item <?= ($current_page ?? '') === 'files' ? 'active' : '' ?>">
+                <i data-lucide="folder"></i>
+                <span>File Manager</span>
+            </a>
+            <a href="<?= $base_url ?? '' ?>/databases/<?= $service_id ?>"
+                class="lp-nav-item <?= ($current_page ?? '') === 'databases' ? 'active' : '' ?>">
+                <i data-lucide="database"></i>
+                <span>Databases</span>
+            </a>
+        <?php endif; ?>
+
         <?php if (($_SESSION['user_role'] ?? '') === 'reseller'): ?>
             <!-- Reseller Section -->
             <div class="lp-nav-section">Reseller</div>
@@ -41,19 +61,14 @@
             <!-- Admin Section -->
             <div class="lp-nav-section">Admin</div>
             <a href="<?= $base_url ?? '' ?>/admin"
-                class="lp-nav-item <?= ($current_page ?? '') === 'admin' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'admin_dashboard' ? 'active' : '' ?>">
                 <i data-lucide="shield"></i>
                 <span>Admin Panel</span>
             </a>
-            <a href="<?= $base_url ?? '' ?>/admin/nodes"
-                class="lp-nav-item <?= ($current_page ?? '') === 'nodes' ? 'active' : '' ?>">
-                <i data-lucide="server"></i>
-                <span>Nodes / Servers</span>
-            </a>
             <a href="<?= $base_url ?? '' ?>/admin/users"
-                class="lp-nav-item <?= ($current_page ?? '') === 'users' ? 'active' : '' ?>">
+                class="lp-nav-item <?= ($current_page ?? '') === 'admin_users' ? 'active' : '' ?>">
                 <i data-lucide="users"></i>
-                <span>Users</span>
+                <span>Users List</span>
             </a>
             <a href="<?= $base_url ?? '' ?>/admin/packages"
                 class="lp-nav-item <?= ($current_page ?? '') === 'packages' ? 'active' : '' ?>">

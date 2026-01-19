@@ -75,7 +75,7 @@ class ServiceController extends BaseController
             return $this->render($response, 'errors/404', [
                 'title' => 'Not Found - LogicPanel',
                 'message' => 'Service not found'
-            ], 404);
+            ]);
         }
 
         // Get container details
@@ -348,7 +348,7 @@ class ServiceController extends BaseController
             ->first();
 
         if (!$service) {
-            return $this->render($response, 'errors/404', ['message' => 'Service not found'], 404);
+            return $this->render($response, 'errors/404', ['message' => 'Service not found']);
         }
 
         return $this->render($response, 'services/env', [
@@ -826,10 +826,30 @@ class ServiceController extends BaseController
 
     /**
      * Provision container for service
+     * Made public for cross-controller re-provisioning
      */
-    private function provisionContainer(Service $service, \LogicPanel\Models\Package $package): array
+    public function provisionContainer(Service $service, \LogicPanel\Models\Package $package): array
     {
         $containerName = 'lp-' . $service->name . '-' . $service->id;
+        $volumeName = "lp_data_{$service->id}";
+
+        // Ensure volume exists for data persistence
+        $this->docker->createVolume($volumeName, [
+            'logicpanel.service_id' => (string) $service->id,
+            'logicpanel.user_id' => (string) $service->user_id
+        ]);
+
+        // Get primary domain for SSL labels
+        $primaryDomain = \LogicPanel\Models\Domain::where('service_id', $service->id)
+            ->where('is_primary', true)
+            ->first();
+
+        // Get all domains for VIRTUAL_HOST
+        $allDomains = \LogicPanel\Models\Domain::where('service_id', $service->id)
+            ->pluck('domain')
+            ->toArray();
+
+        $domainList = implode(',', $allDomains);
 
         // Determine image based on runtime
         $images = [
@@ -840,21 +860,42 @@ class ServiceController extends BaseController
         ];
         $image = $images[$service->runtime] ?? 'node:18-alpine';
 
+        // Base Environment Variables
+        $env = [
+            'SERVICE_ID=' . $service->id,
+            'RUNTIME=' . $service->runtime,
+            'PORT=' . ($service->port ?: 3000),
+            'VIRTUAL_HOST=' . ($domainList ?: 'localhost'),
+            'VIRTUAL_PORT=' . ($service->port ?: 3000),
+            'LETSENCRYPT_HOST=' . ($domainList ?: ''),
+            'LETSENCRYPT_EMAIL=' . ($service->user->email ?? 'admin@localhost')
+        ];
+
+        // Add custom env vars
+        $customEnv = is_string($service->env_vars) ? json_decode($service->env_vars, true) : $service->env_vars;
+        if (is_array($customEnv)) {
+            foreach ($customEnv as $key => $value) {
+                $env[] = "{$key}={$value}";
+            }
+        }
+
         // Build container config
         $config = [
             'Image' => $image,
             'name' => $containerName,
             'Hostname' => $containerName,
-            'Env' => [
-                'SERVICE_ID=' . $service->id,
-                'RUNTIME=' . $service->runtime
-            ],
+            'Env' => $env,
+            'WorkingDir' => '/app',
+            'Tty' => true,
             'HostConfig' => [
+                'Binds' => ["{$volumeName}:/app"],
                 'Memory' => $package->memory_limit * 1024 * 1024,
                 'NanoCPUs' => (int) ($package->cpu_limit * 1000000000),
-                'RestartPolicy' => ['Name' => 'unless-stopped']
+                'RestartPolicy' => ['Name' => 'unless-stopped'],
+                'NetworkMode' => $_ENV['NGINX_PROXY_NETWORK'] ?? 'nginx-proxy_web'
             ],
             'Labels' => [
+                'logicpanel.managed' => 'true',
                 'logicpanel.service_id' => (string) $service->id,
                 'logicpanel.user_id' => (string) $service->user_id
             ]
@@ -863,10 +904,12 @@ class ServiceController extends BaseController
         // Create and start container
         $createResult = $this->docker->createContainer($config, $containerName);
         if (!$createResult || empty($createResult['Id'])) {
-            return ['success' => false, 'error' => 'Failed to create container'];
+            return ['success' => false, 'error' => 'Failed to create container: ' . $this->docker->getLastError()];
         }
 
         $containerId = $createResult['Id'];
+
+        // Start container
         $startResult = $this->docker->startContainer($containerId);
 
         if ($startResult === false) {

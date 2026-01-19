@@ -103,6 +103,7 @@ $app->group('', function (RouteCollectorProxy $group) {
     // File Manager
     $group->group('/files', function (RouteCollectorProxy $files) {
         $files->get('/{serviceId}', [FileController::class, 'index'])->setName('files');
+        $files->get('/{serviceId}/manager', [FileController::class, 'manager'])->setName('files.manager');
         $files->get('/{serviceId}/browse', [FileController::class, 'browse'])->setName('files.browse');
         $files->get('/{serviceId}/download', [FileController::class, 'download'])->setName('files.download');
         $files->post('/{serviceId}/upload', [FileController::class, 'upload'])->setName('files.upload');

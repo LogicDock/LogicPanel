@@ -33,7 +33,10 @@ class FileController extends BaseController
             ->first();
 
         if (!$service) {
-            return $this->render($response, 'errors/404', ['message' => 'Service not found'], 404);
+            return $this->render($response, 'errors/404', [
+                'title' => 'Not Found',
+                'message' => 'Service not found'
+            ]);
         }
 
         if (!$service->container_id) {
@@ -42,6 +45,29 @@ class FileController extends BaseController
 
         return $this->render($response, 'files/index', [
             'title' => 'File Manager - ' . $service->name,
+            'service' => $service,
+            'current_page' => 'files'
+        ]);
+    }
+
+    /**
+     * Managed File Manager (TinyFM style)
+     */
+    public function manager(Request $request, Response $response, array $args): Response
+    {
+        $user = $request->getAttribute('user');
+        $serviceId = (int) $args['serviceId'];
+
+        $service = Service::where('id', $serviceId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$service) {
+            return $this->render($response, 'errors/404', ['message' => 'Service not found']);
+        }
+
+        return $this->render($response, 'files/manager', [
+            'title' => 'Advanced FM - ' . $service->name,
             'service' => $service
         ]);
     }

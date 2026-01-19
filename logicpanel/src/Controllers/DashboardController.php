@@ -387,6 +387,7 @@ class DashboardController extends BaseController
 
         return $this->render($response, 'admin/index', [
             'title' => 'Admin Dashboard - LogicPanel',
+            'current_page' => 'admin_dashboard',
             'stats' => $stats,
             'dockerConnected' => $dockerConnected,
             'dockerInfo' => $dockerInfo,
@@ -405,6 +406,7 @@ class DashboardController extends BaseController
 
         return $this->render($response, 'admin/users', [
             'title' => 'Users - LogicPanel Admin',
+            'current_page' => 'admin_users',
             'users' => $users
         ]);
     }
