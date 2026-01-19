@@ -22,19 +22,20 @@ ob_start();
                         <div class="col-md-8">
                             <div class="form-group mb-4">
                                 <label class="form-label">Application Name</label>
-                                <input type="text" name="name" class="form-control-custom" placeholder="my-app" autocomplete="off" required>
-                                <small class="form-text text-muted mt-1">Lowercase alphabets, numbers, and hyphens only.</small>
+                                <input type="text" name="name" class="form-control-custom" placeholder="my-app"
+                                    autocomplete="off" required>
+                                <small class="form-text text-muted mt-1">Lowercase alphabets, numbers, and hyphens
+                                    only.</small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group mb-4">
                                 <label class="form-label">Service Plan</label>
-                                <select name="package_id" class="form-control-custom" id="package-select" onchange="updateResourceSummary()">
+                                <select name="package_id" class="form-control-custom" id="package-select"
+                                    onchange="updateResourceSummary()">
                                     <?php foreach ($packages as $pkg): ?>
-                                        <option value="<?= $pkg->id ?>" 
-                                            data-memory="<?= $pkg->memory_limit ?>" 
-                                            data-cpu="<?= $pkg->cpu_limit ?>" 
-                                            data-storage="<?= $pkg->storage_limit ?>"
+                                        <option value="<?= $pkg->id ?>" data-memory="<?= $pkg->memory_limit ?>"
+                                            data-cpu="<?= $pkg->cpu_limit ?>" data-storage="<?= $pkg->storage_limit ?>"
                                             data-price="<?= $pkg->price ?>">
                                             <?= htmlspecialchars($pkg->name) ?>
                                         </option>
@@ -50,28 +51,32 @@ ob_start();
                             <label class="runtime-card">
                                 <input type="radio" name="runtime" value="nodejs" checked>
                                 <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" alt="NodeJS">
+                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg"
+                                        alt="NodeJS">
                                     <span>Node.js</span>
                                 </div>
                             </label>
                             <label class="runtime-card">
                                 <input type="radio" name="runtime" value="python">
                                 <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" alt="Python">
+                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg"
+                                        alt="Python">
                                     <span>Python</span>
                                 </div>
                             </label>
                             <label class="runtime-card">
                                 <input type="radio" name="runtime" value="java">
                                 <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" alt="Java">
+                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg"
+                                        alt="Java">
                                     <span>Java</span>
                                 </div>
                             </label>
                             <label class="runtime-card">
                                 <input type="radio" name="runtime" value="go">
                                 <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg" alt="Go">
+                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg"
+                                        alt="Go">
                                     <span>Go</span>
                                 </div>
                             </label>
@@ -128,114 +133,255 @@ ob_start();
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    /* Force Dark Theme Overrides */
+    /* ==========================================
+       Layout Structure (Missing in previous edit)
+       ========================================== */
+    .tools-layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        /* Fixed width for sidebar */
+        gap: 24px;
+        align-items: start;
+        margin-top: 20px;
+    }
+
+    @media (max-width: 991px) {
+        .tools-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .tools-section {
+        background: var(--bg-card, #1e2127);
+        border: 1px solid var(--border-color, #2f343d);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .tools-section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid var(--border-color, #2f343d);
+    }
+
+    .tools-section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary, #fff);
+    }
+
+    .tools-section-body {
+        padding: 24px;
+    }
+
+    /* ==========================================
+       Sidebar Styling (Resource Summary)
+       ========================================== */
+    .tools-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .info-card {
+        background: var(--bg-card, #1e2127);
+        border: 1px solid var(--border-color, #2f343d);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-card-header {
+        padding: 14px 20px;
+        background: rgba(255, 255, 255, 0.03);
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary, #fff);
+        border-bottom: 1px solid var(--border-color, #2f343d);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-card-body {
+        padding: 0;
+    }
+
+    .info-item {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border-color, #2f343d);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: var(--text-muted, #9ca3af);
+    }
+
+    .info-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary, #fff);
+    }
+
+    /* ==========================================
+       Form & Controls Style
+       ========================================== */
     .form-control-custom {
-        background-color: #2a2e35 !important;
+        background-color: #17191d !important;
         border: 1px solid #3e4451 !important;
         color: #e5e7eb !important;
-        border-radius: 8px;
+        border-radius: 6px;
         padding: 12px 16px;
         width: 100%;
         transition: all 0.2s;
+        font-size: 14px;
     }
+
     .form-control-custom:focus {
-        border-color: var(--primary) !important;
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        border-color: var(--primary, #4CAF50) !important;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
         outline: none;
     }
-    
+
     .form-label {
-        color: #9ca3af;
+        color: #d1d5db;
         font-weight: 500;
-        font-size: 0.9rem;
+        font-size: 14px;
+        margin-bottom: 8px;
+        display: block;
     }
 
     /* Runtime Cards */
     .runtime-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        grid-template-columns: repeat(4, 1fr);
         gap: 15px;
     }
-    .runtime-card input { display: none; }
+
+    @media (max-width: 768px) {
+        .runtime-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .runtime-card input {
+        display: none;
+    }
+
     .card-content {
-        background: #2a2e35;
-        border: 2px solid #3e4451;
-        border-radius: 12px;
+        background: #17191d;
+        border: 1px solid #3e4451;
+        border-radius: 8px;
         padding: 20px 10px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         cursor: pointer;
         transition: all 0.2s;
+        height: 100%;
     }
-    .card-content img { width: 40px; height: 40px; }
-    .card-content span { color: #d1d5db; font-size: 0.9rem; font-weight: 500; }
-    
-    .runtime-card input:checked + .card-content {
-        border-color: var(--primary);
-        background: rgba(var(--primary-rgb), 0.1);
+
+    .card-content img {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
     }
+
+    .card-content span {
+        color: #d1d5db;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .runtime-card input:checked+.card-content {
+        border-color: var(--primary, #4CAF50);
+        background: rgba(76, 175, 80, 0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
     .runtime-card:hover .card-content {
         border-color: #6b7280;
+        transform: translateY(-2px);
     }
 
     /* Deploy Button */
     .btn-deploy {
         width: 100%;
-        background: var(--primary);
+        background: var(--primary, #4CAF50);
         color: white;
         border: none;
-        padding: 14px;
-        border-radius: 8px;
+        padding: 16px;
+        border-radius: 6px;
+        font-size: 15px;
         font-weight: 600;
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         cursor: pointer;
-        transition: opacity 0.2s;
-    }
-    .btn-deploy:hover { opacity: 0.9; }
-    .btn-deploy:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .bg-soft-success { background: rgba(16, 185, 129, 0.1) !important; }
-    .price-tag { color: #34d399 !important; font-weight: bold; font-size: 1.1rem; }
-    
-    .text-muted { color: #6b7280 !important; }
-
-    /* Custom scrollbar for better look */
-    ::-webkit-scrollbar {
-        width: 6px;
+        transition: all 0.2s;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    ::-webkit-scrollbar-thumb {
-        background: var(--border-color);
-        border-radius: 10px;
+    .btn-deploy:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    .bg-soft-success {
+        background: rgba(16, 185, 129, 0.1) !important;
+    }
+
+    .price-tag {
+        color: #34d399 !important;
+        font-weight: 700;
+        font-size: 16px;
+    }
+
+    .text-muted {
+        color: #6b7280 !important;
     }
 </style>
 
 <script>
-    // Update Sidebar Summary
+    // Update Sidebar Summary with safety checks
     function updateResourceSummary() {
         const select = document.getElementById('package-select');
+        if (!select || select.selectedIndex === -1) return;
+
         const opt = select.options[select.selectedIndex];
-        
-        document.getElementById('summary-mem').textContent = opt.dataset.memory + ' MB';
-        document.getElementById('summary-cpu').textContent = opt.dataset.cpu + ' Core';
-        document.getElementById('summary-storage').textContent = opt.dataset.storage + ' GB';
-        document.getElementById('summary-price').textContent = '$' + opt.dataset.price + ' / mo';
+
+        const mem = opt.dataset.memory || '0';
+        const cpu = opt.dataset.cpu || '0';
+        const storage = opt.dataset.storage || '0';
+        const price = opt.dataset.price || '0.00';
+
+        document.getElementById('summary-mem').textContent = mem + ' MB';
+        document.getElementById('summary-cpu').textContent = cpu + ' Core';
+        document.getElementById('summary-storage').textContent = storage + ' GB';
+        document.getElementById('summary-price').textContent = '$' + price + ' / mo';
     }
-    
+
     // Initialize summary on load
     document.addEventListener('DOMContentLoaded', updateResourceSummary);
 
     // Form Submission
-    document.getElementById('create-service-form').addEventListener('submit', async function(e) {
+    document.getElementById('create-service-form').addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = document.getElementById('btn-submit');
         const originalHtml = btn.innerHTML;
-        
+
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
 
@@ -248,9 +394,9 @@ ob_start();
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
+
             const result = await response.json();
-            
+
             if (result.success) {
                 Swal.fire({
                     icon: 'success',
