@@ -1,6 +1,7 @@
 <?php
 /**
  * LogicPanel - Create Service Template (cPanel Style)
+ * With version selection and deployment commands
  */
 $page_title = 'Create New Application';
 $current_page = 'service_create';
@@ -40,7 +41,7 @@ ob_start();
         <div class="form-row">
             <div class="form-label-col">
                 <label>Runtime Environment</label>
-                <span class="form-hint">Select the programming language for your application</span>
+                <span class="form-hint">Select the programming language</span>
             </div>
             <div class="form-input-col">
                 <div class="runtime-selector">
@@ -79,12 +80,25 @@ ob_start();
             </div>
         </div>
 
+        <!-- Runtime Version -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Runtime version</label>
+                <span class="form-hint">Select the version for your runtime</span>
+            </div>
+            <div class="form-input-col">
+                <select name="runtime_version" class="cpanel-input" id="version-select">
+                    <!-- Populated dynamically -->
+                </select>
+                <span class="version-tag" id="version-tag">LTS recommended</span>
+            </div>
+        </div>
+
         <!-- Application Name -->
         <div class="form-row">
             <div class="form-label-col">
                 <label>Application name</label>
-                <span class="form-hint">A unique identifier for your application. Lowercase letters, numbers, and
-                    hyphens only.</span>
+                <span class="form-hint">Lowercase letters, numbers, hyphens only</span>
             </div>
             <div class="form-input-col">
                 <input type="text" name="name" class="cpanel-input" placeholder="my-awesome-app" autocomplete="off"
@@ -96,15 +110,14 @@ ob_start();
         <div class="form-row">
             <div class="form-label-col">
                 <label>Service plan</label>
-                <span class="form-hint">Resource allocation for your application</span>
+                <span class="form-hint">Resource allocation</span>
             </div>
             <div class="form-input-col">
                 <select name="package_id" class="cpanel-input" id="package-select" onchange="updatePlanInfo()">
                     <?php foreach ($packages as $pkg): ?>
                         <option value="<?= $pkg->id ?>" data-memory="<?= $pkg->memory_limit ?>"
                             data-cpu="<?= $pkg->cpu_limit ?>" data-storage="<?= round($pkg->disk_limit / 1024, 1) ?>">
-                            <?= htmlspecialchars($pkg->display_name ?? $pkg->name) ?> — <?= $pkg->memory_limit ?>MB RAM,
-                            <?= $pkg->cpu_limit ?> CPU
+                            <?= htmlspecialchars($pkg->display_name ?? $pkg->name) ?> — <?= $pkg->memory_limit ?>MB RAM
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -118,30 +131,62 @@ ob_start();
             </div>
         </div>
 
-        <!-- Application URL (auto-generated info) -->
+        <!-- Deployment Commands Section -->
+        <div class="form-section-header">
+            <i data-lucide="terminal"></i>
+            <span>Deployment Commands</span>
+            <span class="optional-tag">Optional</span>
+        </div>
+
+        <!-- Install Command -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Install command</label>
+                <span class="form-hint">Command to install dependencies</span>
+            </div>
+            <div class="form-input-col">
+                <input type="text" name="install_cmd" class="cpanel-input" id="install-cmd" placeholder="npm install">
+                <span class="cmd-default">Default: <code id="default-install">npm install</code></span>
+            </div>
+        </div>
+
+        <!-- Build Command -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Build command</label>
+                <span class="form-hint">Command to build your app (if needed)</span>
+            </div>
+            <div class="form-input-col">
+                <input type="text" name="build_cmd" class="cpanel-input" id="build-cmd" placeholder="npm run build">
+                <span class="cmd-default">Default: <code id="default-build">npm run build</code></span>
+            </div>
+        </div>
+
+        <!-- Start Command -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Start command</label>
+                <span class="form-hint">Command to start your application</span>
+            </div>
+            <div class="form-input-col">
+                <input type="text" name="start_cmd" class="cpanel-input" id="start-cmd" placeholder="npm start">
+                <span class="cmd-default">Default: <code id="default-start">npm start</code></span>
+            </div>
+        </div>
+
+        <!-- Application URL -->
         <div class="form-row">
             <div class="form-label-col">
                 <label>Application URL</label>
-                <span class="form-hint">Your app will be accessible at this URL with automatic SSL</span>
+                <span class="form-hint">Auto-generated with SSL</span>
             </div>
             <div class="form-input-col">
                 <div class="url-preview">
                     <span class="url-prefix">https://</span>
                     <span class="url-domain"
-                        id="url-preview">your-app-name.<?= $_ENV['APP_DOMAIN'] ?? 'logicpanel.io' ?></span>
+                        id="url-preview">your-app.<?= $_ENV['APP_DOMAIN'] ?? 'logicpanel.io' ?></span>
                     <span class="ssl-badge"><i data-lucide="shield-check"></i> SSL</span>
                 </div>
-            </div>
-        </div>
-
-        <!-- Startup Command -->
-        <div class="form-row">
-            <div class="form-label-col">
-                <label>Startup command</label>
-                <span class="form-hint">Command to start your application (optional, auto-detected)</span>
-            </div>
-            <div class="form-input-col">
-                <input type="text" name="start_cmd" class="cpanel-input" placeholder="npm start" id="start-cmd">
             </div>
         </div>
 
@@ -158,6 +203,19 @@ ob_start();
             </div>
         </div>
 
+        <!-- Deployment Method Info -->
+        <div class="info-box">
+            <i data-lucide="info"></i>
+            <div>
+                <strong>Deployment Options:</strong>
+                After creating your app, you can deploy code via:
+                <ul>
+                    <li><strong>File Manager</strong> — Upload files directly, then use Terminal</li>
+                    <li><strong>Git Deploy</strong> — Connect your GitHub/GitLab repository</li>
+                </ul>
+            </div>
+        </div>
+
     </form>
 </div>
 
@@ -166,7 +224,7 @@ ob_start();
 
 <style>
     /* ==========================================
-   cPanel Style Header
+   cPanel Style Header & Tabs
    ========================================== */
     .cpanel-app-header {
         display: flex;
@@ -174,7 +232,6 @@ ob_start();
         gap: 16px;
         padding: 24px 0;
         border-bottom: 1px solid var(--border-color);
-        margin-bottom: 0;
     }
 
     .app-icon {
@@ -205,9 +262,6 @@ ob_start();
         color: var(--text-muted);
     }
 
-    /* ==========================================
-   Tabs Navigation (cPanel Style)
-   ========================================== */
     .cpanel-tabs {
         display: flex;
         justify-content: space-between;
@@ -218,7 +272,6 @@ ob_start();
 
     .tab-nav {
         display: flex;
-        gap: 0;
     }
 
     .tab-link {
@@ -263,11 +316,6 @@ ob_start();
         border: 1px solid var(--border-color);
         border-radius: 4px;
         text-decoration: none;
-        transition: all 0.2s;
-    }
-
-    .btn-cancel:hover {
-        background: var(--bg-card);
     }
 
     .btn-create {
@@ -279,20 +327,44 @@ ob_start();
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-create:hover {
-        opacity: 0.9;
     }
 
     /* ==========================================
-   Form Container (cPanel Style)
+   Form Styles
    ========================================== */
     .cpanel-form-container {
         background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: 4px;
+    }
+
+    .form-section-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 24px;
+        background: var(--bg-input);
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .form-section-header svg {
+        width: 18px;
+        height: 18px;
+        color: var(--primary);
+    }
+
+    .optional-tag {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: var(--bg-body);
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-left: auto;
     }
 
     .form-row {
@@ -301,12 +373,8 @@ ob_start();
         border-bottom: 1px solid var(--border-color);
     }
 
-    .form-row:last-of-type {
-        border-bottom: none;
-    }
-
     .form-label-col {
-        width: 240px;
+        width: 200px;
         flex-shrink: 0;
         padding-right: 24px;
     }
@@ -322,7 +390,6 @@ ob_start();
     .form-hint {
         font-size: 12px;
         color: var(--text-muted);
-        line-height: 1.4;
     }
 
     .form-input-col {
@@ -338,7 +405,6 @@ ob_start();
         background: var(--bg-input);
         border: 1px solid var(--border-color);
         border-radius: 4px;
-        transition: all 0.2s;
     }
 
     .cpanel-input:focus {
@@ -347,9 +413,29 @@ ob_start();
         box-shadow: 0 0 0 3px rgba(60, 135, 58, 0.1);
     }
 
-    /* ==========================================
-   Runtime Selector
-   ========================================== */
+    .version-tag {
+        display: inline-block;
+        margin-left: 12px;
+        font-size: 12px;
+        color: var(--primary);
+        font-weight: 500;
+    }
+
+    .cmd-default {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .cmd-default code {
+        background: var(--bg-input);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+
+    /* Runtime Selector */
     .runtime-selector {
         display: flex;
         gap: 12px;
@@ -388,13 +474,7 @@ ob_start();
         background: rgba(60, 135, 58, 0.08);
     }
 
-    .runtime-option:hover .runtime-box {
-        border-color: var(--text-muted);
-    }
-
-    /* ==========================================
-   Plan Badge
-   ========================================== */
+    /* Plan Badge */
     .plan-badge {
         display: flex;
         gap: 16px;
@@ -415,9 +495,7 @@ ob_start();
         color: var(--primary);
     }
 
-    /* ==========================================
-   URL Preview
-   ========================================== */
+    /* URL Preview */
     .url-preview {
         display: flex;
         align-items: center;
@@ -455,9 +533,7 @@ ob_start();
         height: 14px;
     }
 
-    /* ==========================================
-   Environment Variables Section
-   ========================================== */
+    /* Environment Variables */
     .env-section {
         padding: 20px 24px;
         border-top: 1px solid var(--border-color);
@@ -489,11 +565,6 @@ ob_start();
         border: 1px solid var(--primary);
         border-radius: 4px;
         cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-add-var:hover {
-        background: rgba(60, 135, 58, 0.08);
     }
 
     .btn-add-var svg {
@@ -502,12 +573,12 @@ ob_start();
     }
 
     .env-list {
-        min-height: 60px;
+        min-height: 40px;
     }
 
     .env-empty {
         text-align: center;
-        padding: 20px;
+        padding: 16px;
         color: var(--text-muted);
         font-size: 13px;
     }
@@ -529,11 +600,6 @@ ob_start();
         color: var(--text-primary);
     }
 
-    .env-row input:focus {
-        outline: none;
-        border-color: var(--primary);
-    }
-
     .btn-remove-var {
         padding: 8px;
         color: var(--danger);
@@ -542,9 +608,32 @@ ob_start();
         cursor: pointer;
     }
 
-    .btn-remove-var svg {
-        width: 16px;
-        height: 16px;
+    /* Info Box */
+    .info-box {
+        display: flex;
+        gap: 12px;
+        padding: 16px 24px;
+        background: rgba(33, 150, 243, 0.08);
+        border-top: 1px solid var(--border-color);
+        font-size: 13px;
+        color: var(--text-primary);
+    }
+
+    .info-box svg {
+        width: 20px;
+        height: 20px;
+        color: #2196F3;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .info-box ul {
+        margin: 8px 0 0 16px;
+        padding: 0;
+    }
+
+    .info-box li {
+        margin-bottom: 4px;
     }
 
     /* Responsive */
@@ -562,46 +651,102 @@ ob_start();
             flex-direction: column;
             gap: 12px;
         }
-
-        .tab-actions {
-            width: 100%;
-            justify-content: flex-end;
-        }
     }
 </style>
 
 <script>
-    // Runtime icons and titles
-    const runtimeInfo = {
-        nodejs: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg', title: 'Node.js', cmd: 'npm start' },
-        python: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg', title: 'Python', cmd: 'python app.py' },
-        java: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg', title: 'Java', cmd: 'java -jar app.jar' },
-        go: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg', title: 'Go', cmd: './main' }
+    // Runtime versions
+    const runtimeVersions = {
+        nodejs: [
+            { value: '22', label: 'Node.js 22 (Latest)', tag: 'Latest' },
+            { value: '20', label: 'Node.js 20 LTS', tag: 'LTS Recommended', default: true },
+            { value: '18', label: 'Node.js 18 LTS', tag: 'LTS' }
+        ],
+        python: [
+            { value: '3.12', label: 'Python 3.12 (Latest)', tag: 'Latest' },
+            { value: '3.11', label: 'Python 3.11', tag: 'Recommended', default: true },
+            { value: '3.10', label: 'Python 3.10', tag: '' }
+        ],
+        java: [
+            { value: '21', label: 'Java 21 LTS', tag: 'Latest LTS', default: true },
+            { value: '17', label: 'Java 17 LTS', tag: 'LTS' },
+            { value: '11', label: 'Java 11 LTS', tag: '' }
+        ],
+        go: [
+            { value: '1.22', label: 'Go 1.22 (Latest)', tag: 'Latest', default: true },
+            { value: '1.21', label: 'Go 1.21', tag: '' },
+            { value: '1.20', label: 'Go 1.20', tag: '' }
+        ]
     };
 
-    // Update header when runtime changes
+    // Default commands per runtime
+    const runtimeDefaults = {
+        nodejs: { install: 'npm install', build: 'npm run build', start: 'npm start', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg', title: 'Node.js' },
+        python: { install: 'pip install -r requirements.txt', build: '', start: 'python app.py', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg', title: 'Python' },
+        java: { install: 'mvn install', build: 'mvn package', start: 'java -jar target/*.jar', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg', title: 'Java' },
+        go: { install: 'go mod download', build: 'go build -o main', start: './main', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg', title: 'Go' }
+    };
+
+    // Update version dropdown when runtime changes
+    function updateVersions(runtime) {
+        const select = document.getElementById('version-select');
+        const tagSpan = document.getElementById('version-tag');
+        const versions = runtimeVersions[runtime] || [];
+
+        select.innerHTML = '';
+        versions.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.value;
+            opt.textContent = v.label;
+            opt.selected = v.default;
+            select.appendChild(opt);
+        });
+
+        const defaultVer = versions.find(v => v.default);
+        tagSpan.textContent = defaultVer ? defaultVer.tag : '';
+
+        // Update defaults
+        const defaults = runtimeDefaults[runtime];
+        document.getElementById('default-install').textContent = defaults.install || '(none)';
+        document.getElementById('default-build').textContent = defaults.build || '(skip)';
+        document.getElementById('default-start').textContent = defaults.start;
+
+        document.getElementById('install-cmd').placeholder = defaults.install || '';
+        document.getElementById('build-cmd').placeholder = defaults.build || '';
+        document.getElementById('start-cmd').placeholder = defaults.start;
+
+        // Update header
+        document.getElementById('runtime-icon').src = defaults.icon;
+        document.getElementById('runtime-title').textContent = defaults.title;
+    }
+
+    // Update version tag on select change
+    document.getElementById('version-select').addEventListener('change', function () {
+        const runtime = document.querySelector('input[name="runtime"]:checked').value;
+        const versions = runtimeVersions[runtime] || [];
+        const selected = versions.find(v => v.value === this.value);
+        document.getElementById('version-tag').textContent = selected ? selected.tag : '';
+    });
+
+    // Runtime change handler
     document.querySelectorAll('input[name="runtime"]').forEach(radio => {
         radio.addEventListener('change', function () {
-            const info = runtimeInfo[this.value];
-            document.getElementById('runtime-icon').src = info.icon;
-            document.getElementById('runtime-title').textContent = info.title;
-            document.getElementById('start-cmd').placeholder = info.cmd;
+            updateVersions(this.value);
         });
     });
 
-    // Update plan badge
+    // Plan info update
     function updatePlanInfo() {
         const select = document.getElementById('package-select');
         const opt = select.options[select.selectedIndex];
-
         document.getElementById('badge-cpu').textContent = opt.dataset.cpu || '0.5';
         document.getElementById('badge-mem').textContent = opt.dataset.memory || '512';
         document.getElementById('badge-storage').textContent = opt.dataset.storage || '5';
     }
 
-    // Update URL preview
+    // URL preview
     document.querySelector('input[name="name"]').addEventListener('input', function () {
-        const name = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'your-app-name';
+        const name = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'your-app';
         document.getElementById('url-preview').textContent = name + '.<?= $_ENV['APP_DOMAIN'] ?? 'logicpanel.io' ?>';
     });
 
@@ -628,6 +773,7 @@ ob_start();
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function () {
+        updateVersions('nodejs');
         updatePlanInfo();
         lucide.createIcons();
     });
@@ -636,8 +782,6 @@ ob_start();
     document.getElementById('create-service-form').addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = document.getElementById('btn-submit');
-        const originalText = btn.textContent;
-
         btn.disabled = true;
         btn.textContent = 'CREATING...';
 
@@ -657,7 +801,7 @@ ob_start();
                 Swal.fire({
                     icon: 'success',
                     title: 'Application Created!',
-                    text: 'Redirecting to your app...',
+                    text: 'Redirecting...',
                     timer: 1500,
                     showConfirmButton: false,
                     background: getComputedStyle(document.body).getPropertyValue('--bg-card').trim(),
@@ -677,7 +821,7 @@ ob_start();
                 color: getComputedStyle(document.body).getPropertyValue('--text-primary').trim()
             });
             btn.disabled = false;
-            btn.textContent = originalText;
+            btn.textContent = 'CREATE';
         }
     });
 </script>

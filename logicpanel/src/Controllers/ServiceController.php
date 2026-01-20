@@ -85,12 +85,21 @@ class ServiceController extends BaseController
                 }
             }
 
-            // 4. Create Service Record
+            // 4. Create Service Record with version and commands
+            $runtimeVersion = $data['runtime_version'] ?? $this->getDefaultVersion($runtime);
+            $installCmd = trim($data['install_cmd'] ?? '');
+            $buildCmd = trim($data['build_cmd'] ?? '');
+            $startCmd = trim($data['start_cmd'] ?? '');
+
             $service = new Service();
             $service->user_id = $user->id;
             $service->package_id = $package->id;
             $service->name = $name;
             $service->runtime = $runtime;
+            $service->runtime_version = $runtimeVersion;
+            $service->install_cmd = $installCmd ?: $this->getDefaultCommand($runtime, 'install');
+            $service->build_cmd = $buildCmd ?: $this->getDefaultCommand($runtime, 'build');
+            $service->start_cmd = $startCmd ?: $this->getDefaultCommand($runtime, 'start');
             $service->status = 'creating';
             $service->port = in_array($runtime, ['java', 'go']) ? 8080 : ($runtime === 'python' ? 8000 : 3000);
             $service->save();
@@ -944,6 +953,34 @@ class ServiceController extends BaseController
     }
 
     /**
+     * Get default version for runtime
+     */
+    private function getDefaultVersion(string $runtime): string
+    {
+        $defaults = [
+            'nodejs' => '20',
+            'python' => '3.11',
+            'java' => '21',
+            'go' => '1.22'
+        ];
+        return $defaults[$runtime] ?? '20';
+    }
+
+    /**
+     * Get default command for runtime
+     */
+    private function getDefaultCommand(string $runtime, string $type): string
+    {
+        $commands = [
+            'nodejs' => ['install' => 'npm install', 'build' => 'npm run build', 'start' => 'npm start'],
+            'python' => ['install' => 'pip install -r requirements.txt', 'build' => '', 'start' => 'python app.py'],
+            'java' => ['install' => 'mvn install', 'build' => 'mvn package', 'start' => 'java -jar target/*.jar'],
+            'go' => ['install' => 'go mod download', 'build' => 'go build -o main', 'start' => './main']
+        ];
+        return $commands[$runtime][$type] ?? '';
+    }
+
+    /**
      * Provision container for service
      * Made public for cross-controller re-provisioning
      */
@@ -970,14 +1007,15 @@ class ServiceController extends BaseController
 
         $domainList = implode(',', $allDomains);
 
-        // Determine image based on runtime
-        $images = [
-            'nodejs' => 'node:18-alpine',
-            'python' => 'python:3.11-alpine',
-            'java' => 'openjdk:17-slim',
-            'go' => 'golang:1.21-alpine'
+        // Determine image based on runtime and version
+        $version = $service->runtime_version ?? $this->getDefaultVersion($service->runtime);
+        $imageTemplates = [
+            'nodejs' => "node:{$version}-alpine",
+            'python' => "python:{$version}-alpine",
+            'java' => "openjdk:{$version}-slim",
+            'go' => "golang:{$version}-alpine"
         ];
-        $image = $images[$service->runtime] ?? 'node:18-alpine';
+        $image = $imageTemplates[$service->runtime] ?? "node:20-alpine";
 
         // Pull image if not exists
         $this->docker->pullImage($image);
