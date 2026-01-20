@@ -33,10 +33,10 @@ class GitController extends BaseController
         $service = Service::where('id', $serviceId)
             ->where('user_id', $user->id)
             ->with([
-                    'deployments' => function ($q) {
-                        $q->orderBy('created_at', 'desc')->limit(10);
-                    }
-                ])
+                'deployments' => function ($q) {
+                    $q->orderBy('created_at', 'desc')->limit(10);
+                }
+            ])
             ->first();
 
         if (!$service) {
@@ -119,52 +119,66 @@ class GitController extends BaseController
      */
     public function saveConfig(Request $request, Response $response, array $args): Response
     {
-        $user = $request->getAttribute('user');
-        $serviceId = (int) $args['serviceId'];
-        $data = $request->getParsedBody();
+        try {
+            $user = $request->getAttribute('user');
+            $serviceId = (int) $args['serviceId'];
 
-        $service = Service::where('id', $serviceId)
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$service) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service not found'], 404);
-        }
-
-        // Validate repository URL
-        $repoUrl = trim($data['github_repo'] ?? '');
-        if (!empty($repoUrl) && !$this->isValidGitUrl($repoUrl)) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'Invalid Git repository URL'], 400);
-        }
-
-        // Update service
-        $service->github_repo = $repoUrl;
-        $service->github_branch = trim($data['github_branch'] ?? 'main') ?: 'main';
-
-        // Handle PAT (Personal Access Token)
-        if (isset($data['github_pat'])) {
-            $pat = trim($data['github_pat']);
-            if (!empty($pat)) {
-                // Encrypt PAT before storing
-                $service->github_pat = $this->encrypt($pat);
-            } elseif ($data['clear_pat'] ?? false) {
-                $service->github_pat = null;
+            // Handle both JSON and form data
+            $contentType = $request->getHeaderLine('Content-Type');
+            if (strpos($contentType, 'application/json') !== false) {
+                $data = json_decode($request->getBody()->getContents(), true) ?? [];
+            } else {
+                $data = $request->getParsedBody() ?? [];
             }
+
+            $service = Service::where('id', $serviceId)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$service) {
+                return $this->jsonResponse($response, ['success' => false, 'error' => 'Service not found'], 404);
+            }
+
+            // Validate repository URL
+            $repoUrl = trim($data['github_repo'] ?? '');
+            if (!empty($repoUrl) && !$this->isValidGitUrl($repoUrl)) {
+                return $this->jsonResponse($response, ['success' => false, 'error' => 'Invalid Git repository URL'], 400);
+            }
+
+            // Update service
+            $service->git_repo = $repoUrl;
+            $service->git_branch = trim($data['github_branch'] ?? 'main') ?: 'main';
+
+            // Handle PAT (Personal Access Token)
+            if (isset($data['github_pat'])) {
+                $pat = trim($data['github_pat']);
+                if (!empty($pat)) {
+                    // Encrypt PAT before storing
+                    $service->github_pat = $this->encrypt($pat);
+                } elseif ($data['clear_pat'] ?? false) {
+                    $service->github_pat = null;
+                }
+            }
+
+            // Update commands
+            $service->install_cmd = trim($data['install_cmd'] ?? 'npm install') ?: 'npm install';
+            $service->build_cmd = trim($data['build_cmd'] ?? '');
+            $service->start_cmd = trim($data['start_cmd'] ?? 'npm start') ?: 'npm start';
+
+            $service->save();
+
+            $this->logActivity($user->id, $serviceId, 'git_config', 'Git configuration updated');
+
+            return $this->jsonResponse($response, [
+                'success' => true,
+                'message' => 'Git configuration saved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return $this->jsonResponse($response, [
+                'success' => false,
+                'error' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Update commands
-        $service->install_cmd = trim($data['install_cmd'] ?? 'npm install') ?: 'npm install';
-        $service->build_cmd = trim($data['build_cmd'] ?? '');
-        $service->start_cmd = trim($data['start_cmd'] ?? 'npm start') ?: 'npm start';
-
-        $service->save();
-
-        $this->logActivity($user->id, $serviceId, 'git_config', 'Git configuration updated');
-
-        return $this->jsonResponse($response, [
-            'success' => true,
-            'message' => 'Git configuration saved successfully'
-        ]);
     }
 
     /**
