@@ -11,7 +11,7 @@ use LogicPanel\Services\LanguageService;
 
 class Service extends Model
 {
-    protected $table = 'services';
+    protected $table = 'lp_services';
 
     protected $fillable = [
         'user_id',
@@ -20,12 +20,12 @@ class Service extends Model
         'container_id',
         'container_name',
         'status',
-        'language',
-        'language_version',
-        'node_version', // deprecated, use language_version
+        'runtime',
+        'runtime_version',
+        'node_version', // deprecated
         'port',
-        'github_repo',
-        'github_branch',
+        'git_repo',
+        'git_branch',
         'github_pat',
         'install_cmd',
         'build_cmd',
