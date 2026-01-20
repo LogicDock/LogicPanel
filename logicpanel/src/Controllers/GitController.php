@@ -140,14 +140,14 @@ class GitController extends BaseController
             }
 
             // Validate repository URL
-            $repoUrl = trim($data['github_repo'] ?? '');
+            $repoUrl = trim($data['git_repo'] ?? '');
             if (!empty($repoUrl) && !$this->isValidGitUrl($repoUrl)) {
                 return $this->jsonResponse($response, ['success' => false, 'error' => 'Invalid Git repository URL'], 400);
             }
 
             // Update service
             $service->git_repo = $repoUrl;
-            $service->git_branch = trim($data['github_branch'] ?? 'main') ?: 'main';
+            $service->git_branch = trim($data['git_branch'] ?? 'main') ?: 'main';
 
             // Handle PAT (Personal Access Token)
             if (isset($data['github_pat'])) {

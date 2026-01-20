@@ -36,8 +36,8 @@ ob_start();
                 <form id="gitConfigForm">
                     <div class="form-group">
                         <label>Repository URL</label>
-                        <input type="text" name="github_repo" class="form-control"
-                            value="<?= htmlspecialchars($service->github_repo ?? '') ?>"
+                        <input type="text" name="git_repo" class="form-control"
+                            value="<?= htmlspecialchars($service->git_repo ?? '') ?>"
                             placeholder="https://github.com/username/repo">
                         <p class="form-hint">Supports GitHub, GitLab, and Bitbucket</p>
                     </div>
@@ -45,8 +45,8 @@ ob_start();
                     <div class="form-row">
                         <div class="form-group">
                             <label>Branch</label>
-                            <input type="text" name="github_branch" class="form-control"
-                                value="<?= htmlspecialchars($service->github_branch ?? 'main') ?>" placeholder="main">
+                            <input type="text" name="git_branch" class="form-control"
+                                value="<?= htmlspecialchars($service->git_branch ?? 'main') ?>" placeholder="main">
                         </div>
                         <div class="form-group">
                             <label>Personal Access Token (for private repos)</label>
@@ -114,13 +114,13 @@ ob_start();
                 <div class="status-list">
                     <div class="status-item">
                         <span class="status-label">Repository</span>
-                        <span class="status-value <?= $service->github_repo ? 'configured' : 'not-configured' ?>">
-                            <?= $service->github_repo ? '✓ Configured' : '✗ Not configured' ?>
+                        <span class="status-value <?= $service->git_repo ? 'configured' : 'not-configured' ?>">
+                            <?= $service->git_repo ? '✓ Configured' : '✗ Not configured' ?>
                         </span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">Branch</span>
-                        <span class="status-value"><?= htmlspecialchars($service->github_branch ?? 'main') ?></span>
+                        <span class="status-value"><?= htmlspecialchars($service->git_branch ?? 'main') ?></span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">Private Repo</span>
