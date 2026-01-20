@@ -979,6 +979,9 @@ class ServiceController extends BaseController
         ];
         $image = $images[$service->runtime] ?? 'node:18-alpine';
 
+        // Pull image if not exists
+        $this->docker->pullImage($image);
+
         // Base Environment Variables
         $env = [
             'SERVICE_ID=' . $service->id,
