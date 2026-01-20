@@ -497,9 +497,18 @@ ob_start();
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const serviceId = <?= $service->id ?>;
     let isDeploying = false;
+
+    // SweetAlert2 theme helper
+    function getSwalTheme() {
+        return {
+            background: getComputedStyle(document.body).getPropertyValue('--bg-card').trim(),
+            color: getComputedStyle(document.body).getPropertyValue('--text-primary').trim()
+        };
+    }
 
     document.getElementById('gitConfigForm').addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -522,14 +531,32 @@ ob_start();
             const result = await response.json();
 
             if (result.success) {
-                alert('Configuration saved!');
-                document.getElementById('deployBtn').disabled = false;
-                location.reload();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved!',
+                    text: 'Configuration saved successfully',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    ...getSwalTheme()
+                }).then(() => {
+                    document.getElementById('deployBtn').disabled = false;
+                    location.reload();
+                });
             } else {
-                alert(result.error || 'Failed to save');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: result.error || 'Failed to save',
+                    ...getSwalTheme()
+                });
             }
         } catch (error) {
-            alert('Error: ' + error.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message,
+                ...getSwalTheme()
+            });
         }
     });
 
