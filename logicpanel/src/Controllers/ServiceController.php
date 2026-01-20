@@ -63,11 +63,22 @@ class ServiceController extends BaseController
             return $this->jsonResponse($response, ['success' => false, 'error' => 'Please select a valid service plan.'], 400);
         }
 
-        // Check usage against the selected package limits
-        $currentCount = Service::where('user_id', $user->id)->count();
-        if ($currentCount >= $package->max_services) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service limit reached for this plan.'], 400);
+        // 3. Check service limits (Admin and Reseller bypass)
+        if ($user->role === 'user') {
+            $currentCount = Service::where('user_id', $user->id)->count();
+            // Use global setting for user limit (default 10 if not set)
+            $maxServices = (int) (DB::table('lp_settings')
+                ->where('key', 'max_services_per_user')
+                ->value('value') ?? 10);
+
+            if ($currentCount >= $maxServices) {
+                return $this->jsonResponse($response, [
+                    'success' => false,
+                    'error' => "Service limit reached. You can create up to {$maxServices} services."
+                ], 400);
+            }
         }
+        // Admin and Reseller have unlimited services
 
         // 3. Create Service Record
         $service = new Service();
