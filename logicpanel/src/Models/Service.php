@@ -11,7 +11,7 @@ use LogicPanel\Services\LanguageService;
 
 class Service extends Model
 {
-    protected $table = 'lp_services';
+    protected $table = 'services';
 
     protected $fillable = [
         'user_id',
