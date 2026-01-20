@@ -91,7 +91,7 @@ class ServiceController extends BaseController
             $service->package_id = $package->id;
             $service->name = $name;
             $service->runtime = $runtime;
-            $service->status = 'provisioning';
+            $service->status = 'creating';
             $service->port = in_array($runtime, ['java', 'go']) ? 8080 : ($runtime === 'python' ? 8000 : 3000);
             $service->save();
 
