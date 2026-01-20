@@ -7,122 +7,158 @@ $current_page = 'service_create';
 ob_start();
 ?>
 
-<div class="tools-layout">
-    <div class="tools-main">
-        <div class="tools-section">
-            <div class="tools-section-header">
-                <div class="tools-section-icon" style="background: rgba(60, 135, 58, 0.15); color: var(--primary);">
-                    <i data-lucide="plus-circle"></i>
-                </div>
-                <span class="tools-section-title">New Application Details</span>
-            </div>
-            <div class="tools-section-body">
-                <form id="create-service-form" class="lp-form-modern">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="form-group mb-4">
-                                <label class="form-label">Application Name</label>
-                                <input type="text" name="name" class="form-control-custom" placeholder="my-app"
-                                    autocomplete="off" required>
-                                <small class="form-text text-muted mt-1">Lowercase alphabets, numbers, and hyphens
-                                    only.</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group mb-4">
-                                <label class="form-label">Service Plan</label>
-                                <select name="package_id" class="form-control-custom" id="package-select"
-                                    onchange="updateResourceSummary()">
-                                    <?php foreach ($packages as $pkg): ?>
-                                        <option value="<?= $pkg->id ?>" data-memory="<?= $pkg->memory_limit ?>"
-                                            data-cpu="<?= $pkg->cpu_limit ?>"
-                                            data-storage="<?= round($pkg->disk_limit / 1024, 1) ?>">
-                                            <?= htmlspecialchars($pkg->name) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group mb-4">
-                        <label class="form-label mb-3">Runtime Environment</label>
-                        <div class="runtime-grid">
-                            <label class="runtime-card">
-                                <input type="radio" name="runtime" value="nodejs" checked>
-                                <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg"
-                                        alt="NodeJS">
-                                    <span>Node.js</span>
-                                </div>
-                            </label>
-                            <label class="runtime-card">
-                                <input type="radio" name="runtime" value="python">
-                                <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg"
-                                        alt="Python">
-                                    <span>Python</span>
-                                </div>
-                            </label>
-                            <label class="runtime-card">
-                                <input type="radio" name="runtime" value="java">
-                                <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg"
-                                        alt="Java">
-                                    <span>Java</span>
-                                </div>
-                            </label>
-                            <label class="runtime-card">
-                                <input type="radio" name="runtime" value="go">
-                                <div class="card-content">
-                                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg"
-                                        alt="Go">
-                                    <span>Go</span>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <button type="submit" class="btn-deploy" id="btn-submit">
-                            <i data-lucide="rocket"></i>
-                            <span>Deploy Application</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+<div class="cpanel-app-header">
+    <div class="app-icon">
+        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" alt="Runtime"
+            id="runtime-icon">
     </div>
-
-    <!-- Right Summary Sidebar -->
-    <div class="tools-sidebar">
-        <div class="info-card">
-            <div class="info-card-header">
-                <i data-lucide="bar-chart-2" style="width: 16px;"></i> Plan Resources
-            </div>
-            <div class="info-card-body">
-                <div class="info-item">
-                    <div class="info-label">Memory</div>
-                    <div class="info-value" id="summary-mem">--</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">CPU Cores</div>
-                    <div class="info-value" id="summary-cpu">--</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Storage</div>
-                    <div class="info-value" id="summary-storage">--</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="info-card mt-1" style="border-style: dashed; opacity: 0.8;">
-            <div class="info-card-body p-3" style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
-                <i data-lucide="info" style="width:14px; margin-right:5px; vertical-align:middle;"></i>
-                New services are automatically assigned a subdomain and SSL certificate.
-            </div>
-        </div>
+    <div class="app-title">
+        <h1 id="runtime-title">Node.js</h1>
+        <span class="app-subtitle">Application Setup Manager</span>
     </div>
+</div>
+
+<div class="cpanel-tabs">
+    <div class="tab-nav">
+        <a href="<?= $base_url ?>/services" class="tab-link">
+            <i data-lucide="layers"></i> WEB APPLICATIONS
+        </a>
+        <a href="#" class="tab-link active">
+            <i data-lucide="plus-circle"></i> CREATE APPLICATION
+        </a>
+    </div>
+    <div class="tab-actions">
+        <a href="<?= $base_url ?>/services" class="btn-cancel">CANCEL</a>
+        <button type="submit" form="create-service-form" class="btn-create" id="btn-submit">CREATE</button>
+    </div>
+</div>
+
+<div class="cpanel-form-container">
+    <form id="create-service-form">
+
+        <!-- Runtime Selection -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Runtime Environment</label>
+                <span class="form-hint">Select the programming language for your application</span>
+            </div>
+            <div class="form-input-col">
+                <div class="runtime-selector">
+                    <label class="runtime-option">
+                        <input type="radio" name="runtime" value="nodejs" checked>
+                        <div class="runtime-box">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg"
+                                alt="Node.js">
+                            <span>Node.js</span>
+                        </div>
+                    </label>
+                    <label class="runtime-option">
+                        <input type="radio" name="runtime" value="python">
+                        <div class="runtime-box">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg"
+                                alt="Python">
+                            <span>Python</span>
+                        </div>
+                    </label>
+                    <label class="runtime-option">
+                        <input type="radio" name="runtime" value="java">
+                        <div class="runtime-box">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg"
+                                alt="Java">
+                            <span>Java</span>
+                        </div>
+                    </label>
+                    <label class="runtime-option">
+                        <input type="radio" name="runtime" value="go">
+                        <div class="runtime-box">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg" alt="Go">
+                            <span>Go</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Application Name -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Application name</label>
+                <span class="form-hint">A unique identifier for your application. Lowercase letters, numbers, and
+                    hyphens only.</span>
+            </div>
+            <div class="form-input-col">
+                <input type="text" name="name" class="cpanel-input" placeholder="my-awesome-app" autocomplete="off"
+                    required>
+            </div>
+        </div>
+
+        <!-- Service Plan -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Service plan</label>
+                <span class="form-hint">Resource allocation for your application</span>
+            </div>
+            <div class="form-input-col">
+                <select name="package_id" class="cpanel-input" id="package-select" onchange="updatePlanInfo()">
+                    <?php foreach ($packages as $pkg): ?>
+                        <option value="<?= $pkg->id ?>" data-memory="<?= $pkg->memory_limit ?>"
+                            data-cpu="<?= $pkg->cpu_limit ?>" data-storage="<?= round($pkg->disk_limit / 1024, 1) ?>">
+                            <?= htmlspecialchars($pkg->display_name ?? $pkg->name) ?> — <?= $pkg->memory_limit ?>MB RAM,
+                            <?= $pkg->cpu_limit ?> CPU
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="plan-badge" id="plan-badge">
+                    <span class="badge-item"><i data-lucide="cpu"></i> <span id="badge-cpu">0.5</span> Core</span>
+                    <span class="badge-item"><i data-lucide="memory-stick"></i> <span id="badge-mem">512</span>
+                        MB</span>
+                    <span class="badge-item"><i data-lucide="hard-drive"></i> <span id="badge-storage">5</span>
+                        GB</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Application URL (auto-generated info) -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Application URL</label>
+                <span class="form-hint">Your app will be accessible at this URL with automatic SSL</span>
+            </div>
+            <div class="form-input-col">
+                <div class="url-preview">
+                    <span class="url-prefix">https://</span>
+                    <span class="url-domain"
+                        id="url-preview">your-app-name.<?= $_ENV['APP_DOMAIN'] ?? 'logicpanel.io' ?></span>
+                    <span class="ssl-badge"><i data-lucide="shield-check"></i> SSL</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Startup Command -->
+        <div class="form-row">
+            <div class="form-label-col">
+                <label>Startup command</label>
+                <span class="form-hint">Command to start your application (optional, auto-detected)</span>
+            </div>
+            <div class="form-input-col">
+                <input type="text" name="start_cmd" class="cpanel-input" placeholder="npm start" id="start-cmd">
+            </div>
+        </div>
+
+        <!-- Environment Variables Section -->
+        <div class="env-section">
+            <div class="env-header">
+                <h3>Environment variables</h3>
+                <button type="button" class="btn-add-var" onclick="addEnvVar()">
+                    <i data-lucide="plus-circle"></i> ADD VARIABLE
+                </button>
+            </div>
+            <div id="env-vars-list" class="env-list">
+                <div class="env-empty">No environment variables configured</div>
+            </div>
+        </div>
+
+    </form>
 </div>
 
 <!-- SweetAlert2 -->
@@ -130,249 +166,480 @@ ob_start();
 
 <style>
     /* ==========================================
-       Layout Structure
-       ========================================== */
-    .tools-layout {
-        display: grid;
-        grid-template-columns: 1fr 300px;
-        gap: 24px;
-        align-items: start;
-        margin-top: 20px;
-    }
-
-    @media (max-width: 991px) {
-        .tools-layout {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .tools-section {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .tools-section-header {
+   cPanel Style Header
+   ========================================== */
+    .cpanel-app-header {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 16px 20px;
-        background: var(--bg-input);
-        /* Theme aware */
+        gap: 16px;
+        padding: 24px 0;
         border-bottom: 1px solid var(--border-color);
+        margin-bottom: 0;
     }
 
-    .tools-section-title {
-        font-size: 16px;
+    .app-icon {
+        width: 56px;
+        height: 56px;
+        background: var(--bg-card);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .app-icon img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .app-title h1 {
+        font-size: 24px;
         font-weight: 600;
         color: var(--text-primary);
+        margin: 0;
     }
 
-    .tools-section-body {
-        padding: 24px;
+    .app-subtitle {
+        font-size: 13px;
+        color: var(--text-muted);
     }
 
     /* ==========================================
-       Sidebar Styling (Resource Summary)
-       ========================================== */
-    .tools-sidebar {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .info-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    }
-
-    .info-card-header {
-        padding: 14px 20px;
-        background: var(--bg-input);
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .info-card-body {
-        padding: 0;
-    }
-
-    .info-item {
-        padding: 14px 20px;
-        border-bottom: 1px solid var(--border-color);
+   Tabs Navigation (cPanel Style)
+   ========================================== */
+    .cpanel-tabs {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 24px;
     }
 
-    .info-item:last-child {
-        border-bottom: none;
+    .tab-nav {
+        display: flex;
+        gap: 0;
     }
 
-    .info-label {
+    .tab-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 20px;
         font-size: 13px;
+        font-weight: 500;
         color: var(--text-muted);
+        text-decoration: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
     }
 
-    .info-value {
-        font-size: 14px;
+    .tab-link:hover {
+        color: var(--primary);
+    }
+
+    .tab-link.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+
+    .tab-link svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .tab-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-cancel {
+        padding: 10px 20px;
+        font-size: 13px;
         font-weight: 500;
         color: var(--text-primary);
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-cancel:hover {
+        background: var(--bg-card);
+    }
+
+    .btn-create {
+        padding: 10px 24px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--primary);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-create:hover {
+        opacity: 0.9;
     }
 
     /* ==========================================
-       Form & Controls Style (Theme Aware)
-       ========================================== */
-    .form-control-custom {
-        background-color: var(--bg-input) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-primary) !important;
-        border-radius: 6px;
-        padding: 12px 16px;
-        width: 100%;
-        transition: all 0.2s;
-        font-size: 14px;
+   Form Container (cPanel Style)
+   ========================================== */
+    .cpanel-form-container {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
     }
 
-    .form-control-custom:focus {
-        border-color: var(--primary) !important;
-        box-shadow: 0 0 0 2px rgba(96, 125, 139, 0.15);
-        outline: none;
+    .form-row {
+        display: flex;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
     }
 
-    .form-label {
-        color: var(--text-primary);
-        font-weight: 500;
-        font-size: 14px;
-        margin-bottom: 8px;
+    .form-row:last-of-type {
+        border-bottom: none;
+    }
+
+    .form-label-col {
+        width: 240px;
+        flex-shrink: 0;
+        padding-right: 24px;
+    }
+
+    .form-label-col label {
         display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 4px;
     }
 
-    /* Runtime Cards */
-    .runtime-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
+    .form-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.4;
     }
 
-    @media (max-width: 768px) {
-        .runtime-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
+    .form-input-col {
+        flex: 1;
     }
 
-    .runtime-card input {
+    .cpanel-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 10px 14px;
+        font-size: 14px;
+        color: var(--text-primary);
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .cpanel-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(60, 135, 58, 0.1);
+    }
+
+    /* ==========================================
+   Runtime Selector
+   ========================================== */
+    .runtime-selector {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .runtime-option input {
         display: none;
     }
 
-    .card-content {
+    .runtime-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
         background: var(--bg-input);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 20px 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
+        border-radius: 4px;
         cursor: pointer;
         transition: all 0.2s;
-        height: 100%;
     }
 
-    .card-content img {
-        width: 40px;
-        height: 40px;
-        object-fit: contain;
+    .runtime-box img {
+        width: 24px;
+        height: 24px;
     }
 
-    .card-content span {
-        color: var(--text-muted);
+    .runtime-box span {
         font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .runtime-option input:checked+.runtime-box {
+        border-color: var(--primary);
+        background: rgba(60, 135, 58, 0.08);
+    }
+
+    .runtime-option:hover .runtime-box {
+        border-color: var(--text-muted);
+    }
+
+    /* ==========================================
+   Plan Badge
+   ========================================== */
+    .plan-badge {
+        display: flex;
+        gap: 16px;
+        margin-top: 12px;
+    }
+
+    .badge-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .badge-item svg {
+        width: 14px;
+        height: 14px;
+        color: var(--primary);
+    }
+
+    /* ==========================================
+   URL Preview
+   ========================================== */
+    .url-preview {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 14px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        max-width: 400px;
+    }
+
+    .url-prefix {
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .url-domain {
+        color: var(--primary);
+        font-size: 14px;
         font-weight: 500;
     }
 
-    .runtime-card input:checked+.card-content {
-        border-color: var(--primary);
-        background: rgba(96, 125, 139, 0.08);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    }
-
-    .runtime-card input:checked+.card-content span {
-        color: var(--primary);
-        font-weight: 600;
-    }
-
-    .runtime-card:hover .card-content {
-        border-color: var(--text-muted);
-        transform: translateY(-2px);
-    }
-
-    /* Deploy Button */
-    .btn-deploy {
-        width: 100%;
-        background: var(--primary);
-        color: #fff;
-        border: none;
-        padding: 16px;
-        border-radius: 6px;
-        font-size: 15px;
-        font-weight: 600;
+    .ssl-badge {
+        margin-left: auto;
         display: flex;
-        justify-content: center;
         align-items: center;
-        gap: 10px;
+        gap: 4px;
+        font-size: 11px;
+        color: #4CAF50;
+        font-weight: 500;
+    }
+
+    .ssl-badge svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* ==========================================
+   Environment Variables Section
+   ========================================== */
+    .env-section {
+        padding: 20px 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .env-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .env-header h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .btn-add-var {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--primary);
+        background: transparent;
+        border: 1px solid var(--primary);
+        border-radius: 4px;
         cursor: pointer;
         transition: all 0.2s;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .btn-deploy:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
+    .btn-add-var:hover {
+        background: rgba(60, 135, 58, 0.08);
     }
 
-    .text-muted {
-        color: var(--text-muted) !important;
+    .btn-add-var svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .env-list {
+        min-height: 60px;
+    }
+
+    .env-empty {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-muted);
+        font-size: 13px;
+    }
+
+    .env-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 8px;
+        align-items: center;
+    }
+
+    .env-row input {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 13px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-primary);
+    }
+
+    .env-row input:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .btn-remove-var {
+        padding: 8px;
+        color: var(--danger);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-remove-var svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-row {
+            flex-direction: column;
+        }
+
+        .form-label-col {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .cpanel-tabs {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tab-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
     }
 </style>
 
 <script>
-    // Update Sidebar Summary with safety checks
-    function updateResourceSummary() {
-        const select = document.getElementById('package-select');
-        if (!select || select.selectedIndex === -1) return;
+    // Runtime icons and titles
+    const runtimeInfo = {
+        nodejs: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg', title: 'Node.js', cmd: 'npm start' },
+        python: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg', title: 'Python', cmd: 'python app.py' },
+        java: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg', title: 'Java', cmd: 'java -jar app.jar' },
+        go: { icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg', title: 'Go', cmd: './main' }
+    };
 
+    // Update header when runtime changes
+    document.querySelectorAll('input[name="runtime"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            const info = runtimeInfo[this.value];
+            document.getElementById('runtime-icon').src = info.icon;
+            document.getElementById('runtime-title').textContent = info.title;
+            document.getElementById('start-cmd').placeholder = info.cmd;
+        });
+    });
+
+    // Update plan badge
+    function updatePlanInfo() {
+        const select = document.getElementById('package-select');
         const opt = select.options[select.selectedIndex];
 
-        const mem = opt.dataset.memory || '0';
-        const cpu = opt.dataset.cpu || '0';
-        const storage = opt.dataset.storage || '0';
-
-        document.getElementById('summary-mem').textContent = mem + ' MB';
-        document.getElementById('summary-cpu').textContent = cpu + ' Core';
-        document.getElementById('summary-storage').textContent = storage + ' GB';
+        document.getElementById('badge-cpu').textContent = opt.dataset.cpu || '0.5';
+        document.getElementById('badge-mem').textContent = opt.dataset.memory || '512';
+        document.getElementById('badge-storage').textContent = opt.dataset.storage || '5';
     }
 
-    // Initialize summary on load
-    document.addEventListener('DOMContentLoaded', updateResourceSummary);
+    // Update URL preview
+    document.querySelector('input[name="name"]').addEventListener('input', function () {
+        const name = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'your-app-name';
+        document.getElementById('url-preview').textContent = name + '.<?= $_ENV['APP_DOMAIN'] ?? 'logicpanel.io' ?>';
+    });
+
+    // Environment variables
+    let envVarCount = 0;
+    function addEnvVar() {
+        const list = document.getElementById('env-vars-list');
+        const empty = list.querySelector('.env-empty');
+        if (empty) empty.remove();
+
+        const row = document.createElement('div');
+        row.className = 'env-row';
+        row.innerHTML = `
+        <input type="text" name="env_key_${envVarCount}" placeholder="VARIABLE_NAME">
+        <input type="text" name="env_val_${envVarCount}" placeholder="value">
+        <button type="button" class="btn-remove-var" onclick="this.parentElement.remove()">
+            <i data-lucide="x"></i>
+        </button>
+    `;
+        list.appendChild(row);
+        lucide.createIcons();
+        envVarCount++;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+        updatePlanInfo();
+        lucide.createIcons();
+    });
 
     // Form Submission
     document.getElementById('create-service-form').addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = document.getElementById('btn-submit');
-        const originalHtml = btn.innerHTML;
+        const originalText = btn.textContent;
 
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+        btn.textContent = 'CREATING...';
 
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
@@ -387,11 +654,10 @@ ob_start();
             const result = await response.json();
 
             if (result.success) {
-                // Use SweetAlert for success message (Dark Mode Compatible)
                 Swal.fire({
                     icon: 'success',
-                    title: 'Deployed!',
-                    text: 'Redirecting to service overview...',
+                    title: 'Application Created!',
+                    text: 'Redirecting to your app...',
                     timer: 1500,
                     showConfirmButton: false,
                     background: getComputedStyle(document.body).getPropertyValue('--bg-card').trim(),
@@ -411,7 +677,7 @@ ob_start();
                 color: getComputedStyle(document.body).getPropertyValue('--text-primary').trim()
             });
             btn.disabled = false;
-            btn.innerHTML = originalHtml;
+            btn.textContent = originalText;
         }
     });
 </script>
