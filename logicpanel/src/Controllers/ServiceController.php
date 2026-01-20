@@ -43,78 +43,90 @@ class ServiceController extends BaseController
      */
     public function processCreate(Request $request, Response $response): Response
     {
-        $user = $request->getAttribute('user');
-        $data = $request->getParsedBody();
+        try {
+            $user = $request->getAttribute('user');
 
-        // 1. Basic Validation
-        $name = $this->sanitizeName($data['name'] ?? '');
-        $runtime = $data['runtime'] ?? 'nodejs';
-        $packageId = (int) ($data['package_id'] ?? 0);
-
-        if (empty($name)) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'Service name is required'], 400);
-        }
-
-        // 2. Validate Selected Package
-        $packageId = (int) ($data['package_id'] ?? 0);
-        $package = Package::find($packageId);
-
-        if (!$package) {
-            return $this->jsonResponse($response, ['success' => false, 'error' => 'Please select a valid service plan.'], 400);
-        }
-
-        // 3. Check service limits (Admin and Reseller bypass)
-        if ($user->role === 'user') {
-            $currentCount = Service::where('user_id', $user->id)->count();
-            // Use global setting for user limit (default 10 if not set)
-            $maxServices = (int) (DB::table('lp_settings')
-                ->where('key', 'max_services_per_user')
-                ->value('value') ?? 10);
-
-            if ($currentCount >= $maxServices) {
-                return $this->jsonResponse($response, [
-                    'success' => false,
-                    'error' => "Service limit reached. You can create up to {$maxServices} services."
-                ], 400);
+            // Handle both JSON and form data
+            $contentType = $request->getHeaderLine('Content-Type');
+            if (strpos($contentType, 'application/json') !== false) {
+                $data = json_decode($request->getBody()->getContents(), true) ?? [];
+            } else {
+                $data = $request->getParsedBody() ?? [];
             }
-        }
-        // Admin and Reseller have unlimited services
 
-        // 3. Create Service Record
-        $service = new Service();
-        $service->user_id = $user->id;
-        $service->package_id = $package->id;
-        $service->name = $name;
-        $service->runtime = $runtime;
-        $service->status = 'provisioning';
-        $service->port = in_array($runtime, ['java', 'go']) ? 8080 : ($runtime === 'python' ? 8000 : 3000);
-        $service->save();
+            // 1. Basic Validation
+            $name = $this->sanitizeName($data['name'] ?? '');
+            $runtime = $data['runtime'] ?? 'nodejs';
+            $packageId = (int) ($data['package_id'] ?? 0);
 
-        // 4. Assign Default Domain
-        $domain = new Domain();
-        $domain->service_id = $service->id;
-        $domain->domain = $name . '-' . $service->id . '.' . ($_ENV['APP_DOMAIN'] ?? 'logicpanel.io');
-        $domain->is_primary = true;
-        $domain->ssl_enabled = true;
-        $domain->save();
+            if (empty($name)) {
+                return $this->jsonResponse($response, ['success' => false, 'error' => 'Service name is required'], 400);
+            }
 
-        // 5. Trigger Container Provisioning
-        $result = $this->provisionContainer($service, $package);
+            // 2. Validate Selected Package
+            $package = Package::find($packageId);
 
-        if ($result['success']) {
-            $service->container_id = $result['container_id'];
-            $service->status = 'running';
+            if (!$package) {
+                return $this->jsonResponse($response, ['success' => false, 'error' => 'Please select a valid service plan.'], 400);
+            }
+
+            // 3. Check service limits (Admin and Reseller bypass)
+            if ($user->role === 'user') {
+                $currentCount = Service::where('user_id', $user->id)->count();
+                $maxServices = (int) (DB::table('lp_settings')
+                    ->where('key', 'max_services_per_user')
+                    ->value('value') ?? 10);
+
+                if ($currentCount >= $maxServices) {
+                    return $this->jsonResponse($response, [
+                        'success' => false,
+                        'error' => "Service limit reached. You can create up to {$maxServices} services."
+                    ], 400);
+                }
+            }
+
+            // 4. Create Service Record
+            $service = new Service();
+            $service->user_id = $user->id;
+            $service->package_id = $package->id;
+            $service->name = $name;
+            $service->runtime = $runtime;
+            $service->status = 'provisioning';
+            $service->port = in_array($runtime, ['java', 'go']) ? 8080 : ($runtime === 'python' ? 8000 : 3000);
             $service->save();
 
+            // 5. Assign Default Domain
+            $domain = new Domain();
+            $domain->service_id = $service->id;
+            $domain->domain = $name . '-' . $service->id . '.' . ($_ENV['APP_DOMAIN'] ?? 'logicpanel.io');
+            $domain->is_primary = true;
+            $domain->ssl_enabled = true;
+            $domain->save();
+
+            // 6. Trigger Container Provisioning
+            $result = $this->provisionContainer($service, $package);
+
+            if ($result['success']) {
+                $service->container_id = $result['container_id'];
+                $service->status = 'running';
+                $service->save();
+
+                return $this->jsonResponse($response, [
+                    'success' => true,
+                    'message' => 'Service created successfully',
+                    'service_id' => $service->id
+                ]);
+            } else {
+                // Rollback record if docker fails
+                $service->delete();
+                return $this->jsonResponse($response, ['success' => false, 'error' => $result['error']], 500);
+            }
+        } catch (\Exception $e) {
+            // Catch any exception and return JSON error
             return $this->jsonResponse($response, [
-                'success' => true,
-                'message' => 'Service created successfully',
-                'service_id' => $service->id
-            ]);
-        } else {
-            // Rollback record if docker fails
-            $service->delete();
-            return $this->jsonResponse($response, ['success' => false, 'error' => $result['error']], 500);
+                'success' => false,
+                'error' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 

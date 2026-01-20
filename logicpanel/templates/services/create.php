@@ -35,7 +35,8 @@ ob_start();
                                     onchange="updateResourceSummary()">
                                     <?php foreach ($packages as $pkg): ?>
                                         <option value="<?= $pkg->id ?>" data-memory="<?= $pkg->memory_limit ?>"
-                                            data-cpu="<?= $pkg->cpu_limit ?>" data-storage="<?= $pkg->storage_limit ?>">
+                                            data-cpu="<?= $pkg->cpu_limit ?>"
+                                            data-storage="<?= round($pkg->disk_limit / 1024, 1) ?>">
                                             <?= htmlspecialchars($pkg->name) ?>
                                         </option>
                                     <?php endforeach; ?>
