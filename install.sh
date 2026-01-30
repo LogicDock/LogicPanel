@@ -26,6 +26,37 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 generate_random() { cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w "$1" | head -n 1; }
 
+# Spinner for long-running tasks
+spinner() {
+    local pid=$1
+    local delay=0.15
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    while ps -p $pid > /dev/null 2>&1; do
+        for i in $(seq 0 9); do
+            printf "\r  ${CYAN}%s${NC} %s" "${spinstr:$i:1}" "$2"
+            sleep $delay
+        done
+    done
+    printf "\r  ${GREEN}✓${NC} %s\n" "$2"
+}
+
+# Progress bar countdown
+countdown_progress() {
+    local seconds=$1
+    local message=$2
+    local width=40
+    for ((i=0; i<=seconds; i++)); do
+        local pct=$((i * 100 / seconds))
+        local filled=$((i * width / seconds))
+        local empty=$((width - filled))
+        local bar=$(printf "%${filled}s" | tr ' ' '█')$(printf "%${empty}s" | tr ' ' '░')
+        local remaining=$((seconds - i))
+        printf "\r  ${CYAN}[${bar}]${NC} ${pct}%% - ${message} (${remaining}s remaining)"
+        sleep 1
+    done
+    printf "\r  ${GREEN}[$(printf "%${width}s" | tr ' ' '█')]${NC} 100%% - ${message}            \n"
+}
+
 # --- 1. Root Check ---
 if [[ $EUID -ne 0 ]]; then
    log_error "This script must be run as root. Try: sudo bash <(curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh)"
@@ -357,13 +388,21 @@ EOF
 mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views storage/user-apps
 chmod -R 777 storage
 
-log_info "Building and starting containers (this may take 2-5 minutes)..."
-docker compose build --no-cache
-docker compose up -d
+# Build and start containers with beautiful progress
+echo ""
+log_info "Building LogicPanel (this may take 3-5 minutes)..."
+echo -e "  ${YELLOW}Build logs saved to: /tmp/logicpanel_build.log${NC}"
+docker compose build --no-cache > /tmp/logicpanel_build.log 2>&1 &
+spinner $! "Compiling LogicPanel Application..."
 
-# Finalize configuration (waiting 20s for DB)
-log_info "Finalizing configuration (waiting 20s for DB)..."
-sleep 20
+log_info "Starting Services..."
+docker compose up -d > /dev/null 2>&1 &
+spinner $! "Launching Docker Containers..."
+
+# 2-minute wait for services to fully initialize
+echo ""
+log_info "Waiting for services to initialize..."
+countdown_progress 120 "Services warming up"
 
 # Download and Inject Admin Setup Script (Now self-contained with embedded schema)
 curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create_admin.php" -o create_admin.php
@@ -374,19 +413,43 @@ docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
 rm -f create_admin.php
 
 # Execute Admin Creation
-docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"
+log_info "Creating administrator account..."
+docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}" > /dev/null 2>&1
 docker exec logicpanel_app rm -f /var/www/html/create_admin.php
 
-log_success "LogicPanel is now LIVE!"
-echo -e "\n${GREEN}============================================================${NC}"
-echo -e "  ${CYAN}Master Panel:${NC}  https://${PANEL_DOMAIN}:999"
-echo -e "  ${CYAN}User Panel:${NC}    https://${PANEL_DOMAIN}:777"
-echo -e "${GREEN}============================================================${NC}"
-echo -e "  Admin User:  ${CYAN}${ADMIN_USER}${NC}"
-echo -e "  Admin Email: ${CYAN}${ADMIN_EMAIL}${NC}"
-echo -e "  Admin Pass:  ${CYAN}${ADMIN_PASS}${NC}"
-echo -e "${GREEN}============================================================${NC}"
-echo -e "  ${YELLOW}Note:${NC} First access may show SSL warning - click 'Advanced' > 'Proceed'"
-echo -e "  ${YELLOW}Database Info:${NC} Secured with random credentials."
-echo -e "${GREEN}============================================================${NC}\n"
-echo -e "Thank you for choosing LogicPanel by LogicDock.cloud"
+clear
+echo -e "${CYAN}"
+echo "██╗      ██████╗  ██████╗ ██╗ ██████╗██████╗  █████╗ ███╗   ██╗███████╗██╗     "
+echo "██║     ██╔═══██╗██╔════╝ ██║██╔════╝██╔══██╗██╔══██╗████╗  ██║██╔════╝██║     "
+echo "██║     ██║   ██║██║  ███╗██║██║     ██████╔╝███████║██╔██╗ ██║█████╗  ██║     "
+echo "██║     ██║   ██║██║   ██║██║██║     ██╔═══╝ ██╔══██║██║╚██╗██║██╔══╝  ██║     "
+echo "███████╗╚██████╔╝╚██████╔╝██║╚██████╗██║     ██║  ██║██║ ╚████║███████╗███████╗"
+echo "╚══════╝ ╚═════╝  ╚═════╝ ╚═╝ ╚═════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝"
+echo -e "${NC}"
+
+echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║${NC}           ${CYAN}✨ INSTALLATION SUCCESSFUL! ✨${NC}                      ${GREEN}║${NC}"
+echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${YELLOW}🌐 PANEL ACCESS LINKS${NC}                                        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     Master Panel:  ${CYAN}https://${PANEL_DOMAIN}:999${NC}"
+echo -e "${GREEN}║${NC}     User Panel:    ${CYAN}https://${PANEL_DOMAIN}:777${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${YELLOW}🔐 ADMIN CREDENTIALS${NC}                                         ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     Username:    ${CYAN}${ADMIN_USER}${NC}"
+echo -e "${GREEN}║${NC}     Email:       ${CYAN}${ADMIN_EMAIL}${NC}"
+echo -e "${GREEN}║${NC}     Password:    ${CYAN}${ADMIN_PASS}${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${YELLOW}ℹ️  IMPORTANT NOTES${NC}                                          ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • First access may show SSL warning                        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}       Click 'Advanced' > 'Proceed' to continue                 ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • Database secured with random credentials                 ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "  ${CYAN}Thank you for choosing LogicPanel by LogicDock.cloud${NC} 💙"
+echo ""
