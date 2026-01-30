@@ -1,4 +1,5 @@
 <?php
+define('LP_MAIN_ENTRY', true);
 // Load Composer Autoloader
 require __DIR__ . '/vendor/autoload.php';
 
