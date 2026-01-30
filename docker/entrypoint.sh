@@ -21,29 +21,49 @@ mkdir -p /etc/apache2/ssl
 CERT_DIR="/etc/nginx/certs"
 DOMAIN="${VIRTUAL_HOST}"
 
-echo "Waiting for certificates for $DOMAIN in $CERT_DIR..."
-# Wait up to 60 seconds for certs to appear (LetsEncrypt companion needs time)
-for i in {1..12}; do
+echo "=== SSL Certificate Setup ==="
+echo "Looking for certs for domain: $DOMAIN"
+echo "Certificate directory: $CERT_DIR"
+
+# Debug: List all files in cert directory
+echo "Files in $CERT_DIR:"
+ls -la "$CERT_DIR" 2>/dev/null || echo "(directory empty or not mounted)"
+
+# Wait up to 90 seconds for certs to appear (LetsEncrypt companion needs time)
+CERT_FOUND=false
+for i in {1..18}; do
+    # Try multiple naming conventions used by nginx-proxy companion
     if [ -f "$CERT_DIR/$DOMAIN.crt" ] && [ -f "$CERT_DIR/$DOMAIN.key" ]; then
-        echo "Found certificates for $DOMAIN"
+        echo "Found certificates: $DOMAIN.crt and $DOMAIN.key"
         ln -sf "$CERT_DIR/$DOMAIN.crt" /etc/apache2/ssl/server.crt
         ln -sf "$CERT_DIR/$DOMAIN.key" /etc/apache2/ssl/server.key
-        a2ensite ssl-custom.conf
-        echo "Enabled SSL on ports 999 and 777"
+        CERT_FOUND=true
+        break
+    elif [ -f "$CERT_DIR/${DOMAIN}/fullchain.pem" ] && [ -f "$CERT_DIR/${DOMAIN}/privkey.pem" ]; then
+        echo "Found certificates: ${DOMAIN}/fullchain.pem and privkey.pem"
+        ln -sf "$CERT_DIR/${DOMAIN}/fullchain.pem" /etc/apache2/ssl/server.crt
+        ln -sf "$CERT_DIR/${DOMAIN}/privkey.pem" /etc/apache2/ssl/server.key
+        CERT_FOUND=true
         break
     fi
-    echo "Certs not found yet, waiting 5s... ($i/12)"
+    echo "[$i/18] Certs not found yet, waiting 5s..."
     sleep 5
 done
 
-if [ ! -f /etc/apache2/ssl/server.crt ]; then
-    echo "No valid certificates found after waiting. Generating self-signed fallback..."
+if [ "$CERT_FOUND" = true ]; then
+    a2ensite ssl-custom.conf 2>/dev/null || true
+    echo "✓ SSL Enabled on ports 999 and 777 with valid certificates!"
+else
+    echo "⚠ No valid certificates found after 90s. Generating self-signed fallback..."
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout /etc/apache2/ssl/server.key \
         -out /etc/apache2/ssl/server.crt \
-        -subj "/C=US/ST=State/L=City/O=LogicPanel/CN=localhost"
-    a2ensite ssl-custom.conf
+        -subj "/C=US/ST=State/L=City/O=LogicPanel/CN=$DOMAIN" 2>/dev/null
+    a2ensite ssl-custom.conf 2>/dev/null || true
+    echo "Self-signed certificate created for: $DOMAIN"
 fi
+
+echo "=== SSL Setup Complete ==="
 
 # Pass control to the main command (apache2-foreground)
 exec "$@"
