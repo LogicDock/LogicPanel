@@ -184,6 +184,9 @@ services:
     image: ghcr.io/logicdock/logicpanel:latest
     container_name: logicpanel_app
     restart: always
+    ports:
+      - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
+      - "${USER_PORT:-666}:${USER_PORT:-666}"
     environment:
       VIRTUAL_HOST: ${PANEL_DOMAIN}
       LETSENCRYPT_HOST: ${PANEL_DOMAIN}

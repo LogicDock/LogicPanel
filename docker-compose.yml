@@ -62,8 +62,8 @@ services:
     container_name: logicpanel_app
     restart: unless-stopped
     ports:
-      - "${MASTER_PORT:-999}:80"
-      - "${USER_PORT:-666}:80"
+      - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
+      - "${USER_PORT:-666}:${USER_PORT:-666}"
     environment:
       - DB_CONNECTION=mysql
       - DB_HOST=logicpanel-db

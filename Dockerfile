@@ -41,6 +41,10 @@ RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-av
 RUN sed -ri -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
+# Configure Apache to Listen on Custom Ports (LogicPanel Requirement)
+RUN echo "Listen 80\nListen 999\nListen 666" > /etc/apache2/ports.conf
+RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost *:80 *:999 *:666>/g' /etc/apache2/sites-available/000-default.conf
+
 # Custom PHP Config
 RUN echo "upload_max_filesize = 512M\npost_max_size = 512M\nmemory_limit = 512M\nmax_execution_time = 300" > /usr/local/etc/php/conf.d/logicpanel.ini
 
@@ -57,4 +61,4 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["apache2-foreground"]
 
-EXPOSE 80
+EXPOSE 80 999 666
