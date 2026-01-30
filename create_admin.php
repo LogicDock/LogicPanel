@@ -43,12 +43,14 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('admin', 'reseller', 'user') DEFAULT 'user',
     status ENUM('active', 'suspended', 'terminated') DEFAULT 'active',
+    package_id INT UNSIGNED DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_username (username),
     INDEX idx_role (role),
-    INDEX idx_status (status)
+    INDEX idx_status (status),
+    INDEX idx_package_id (package_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Services Table (User Applications)

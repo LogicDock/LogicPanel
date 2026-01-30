@@ -122,11 +122,11 @@ class AccountController
                 $package = Package::first();
             }
 
-            // 1. Create System User via Bridge
-            // This is the "Secure Function" part
-            $this->systemBridge->createUser($username, $password);
+            // Note: In Docker-based hosting, we don't need Linux system users.
+            // Each user's apps run in their own containers.
+            // We only need the database record.
 
-            // 2. Create User Entity in DB
+            // Create User Entity in DB
             $user = new User();
             $user->username = $username;
             $user->email = $email;
@@ -148,8 +148,6 @@ class AccountController
                 ]
             ], 201);
         } catch (\Exception $e) {
-            // If system creation fails, we should probably rollback?
-            // For now, return error.
             return $this->jsonResponse($response, ['result' => 'error', 'message' => 'Failed to create account: ' . $e->getMessage()], 500);
         }
     }
