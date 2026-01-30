@@ -183,6 +183,17 @@ ROOT_PASS=$(generate_random 32)
 JWT_SECRET=$(generate_random 64)
 ENC_KEY=$(generate_random 32)
 
+# Detect existing nginx-proxy certificate volume
+CERT_VOLUME="nginx-proxy_certs"
+if docker ps --format '{{.Names}}' | grep -q "^nginx-proxy$"; then
+    log_info "Detecting existing nginx-proxy volumes..."
+    DETECTED_VOLUME=$(docker inspect nginx-proxy --format '{{ range .Mounts }}{{ if eq .Destination "/etc/nginx/certs" }}{{ .Name }}{{ end }}{{ end }}')
+    if [ ! -z "$DETECTED_VOLUME" ]; then
+        CERT_VOLUME="$DETECTED_VOLUME"
+        log_success "Using existing certificate volume: $CERT_VOLUME"
+    fi
+fi
+
 log_info "Step 4: Deploying LogicPanel Services..."
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
@@ -205,6 +216,7 @@ services:
       - "\${USER_PORT:-777}:\${USER_PORT:-777}"
     environment:
       VIRTUAL_HOST: ${PANEL_DOMAIN}
+      VIRTUAL_PORT: 80
       LETSENCRYPT_HOST: ${PANEL_DOMAIN}
       LETSENCRYPT_EMAIL: ${ADMIN_EMAIL}
       DB_CONNECTION: mysql
@@ -331,7 +343,7 @@ services:
 volumes:
   certs:
     external: true
-    name: nginx-proxy_certs
+    name: ${CERT_VOLUME}
 
 networks:
   nginx-proxy_web:
