@@ -18,7 +18,8 @@ RUN docker-php-ext-install pdo pdo_mysql mysqli pdo_pgsql pgsql zip mbstring int
 RUN pecl install redis && docker-php-ext-enable redis
 
 # Enable Apache Rewrite Module
-RUN a2enmod rewrite
+# Enable Apache Modules
+RUN a2enmod rewrite ssl
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -42,8 +43,9 @@ RUN sed -ri -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf
 RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
 # Configure Apache to Listen on Custom Ports (LogicPanel Requirement)
-RUN echo "Listen 80\nListen 999\nListen 666" > /etc/apache2/ports.conf
-RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost *:80 *:999 *:666>/g' /etc/apache2/sites-available/000-default.conf
+COPY docker/apache/ssl-custom.conf /etc/apache2/sites-available/ssl-custom.conf
+RUN echo "Listen 80" > /etc/apache2/ports.conf
+RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost *:80>/g' /etc/apache2/sites-available/000-default.conf
 
 # Custom PHP Config
 RUN echo "upload_max_filesize = 512M\npost_max_size = 512M\nmemory_limit = 512M\nmax_execution_time = 300" > /usr/local/etc/php/conf.d/logicpanel.ini

@@ -25,7 +25,7 @@ bash <(curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/ins
 LogicPanel operates on specific ports for administrative and user access behind the proxy:
 
 - **Admin Panel**: Port `999`
-- **User Panel**: Port `666`
+- **User Panel**: Port `777`
 
 ## 🔒 Security Configuration
 

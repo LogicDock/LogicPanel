@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
     ports:
       - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
-      - "${USER_PORT:-666}:${USER_PORT:-666}"
+      - "${USER_PORT:-777}:${USER_PORT:-777}"
     environment:
       - DB_CONNECTION=mysql
       - DB_HOST=logicpanel-db
@@ -87,6 +87,7 @@ services:
     volumes:
       - .:/var/www/html
       - /var/run/docker.sock:/var/run/docker.sock
+      - certs:/etc/nginx/certs:ro
     networks:
       - logicpanel_network
       - db_internal

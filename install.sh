@@ -184,9 +184,8 @@ services:
     image: ghcr.io/logicdock/logicpanel:latest
     container_name: logicpanel_app
     restart: always
-    ports:
       - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
-      - "${USER_PORT:-666}:${USER_PORT:-666}"
+      - "${USER_PORT:-777}:${USER_PORT:-777}"
     environment:
       VIRTUAL_HOST: ${PANEL_DOMAIN}
       LETSENCRYPT_HOST: ${PANEL_DOMAIN}
@@ -201,11 +200,12 @@ services:
       ENCRYPTION_KEY: ${ENC_KEY}
       APP_URL: https://${PANEL_DOMAIN}
       MASTER_PORT: 999
-      USER_PORT: 666
+      USER_PORT: 777
       APP_ENV: production
     volumes:
       - ./storage:/var/www/html/storage
       - /var/run/docker.sock:/var/run/docker.sock:rw
+      - certs:/etc/nginx/certs:ro
     networks:
       - nginx-proxy_web
       - internal
@@ -263,7 +263,7 @@ echo -e "  Admin User:  ${CYAN}${ADMIN_USER}${NC}"
 echo -e "  Admin Email: ${CYAN}${ADMIN_EMAIL}${NC}"
 echo -e "  Admin Pass:  ${CYAN}${ADMIN_PASS}${NC}"
 echo -e "${GREEN}============================================================${NC}"
-echo -e "  ${YELLOW}Internal Ports:${NC} Master: 999 | User: 666"
+echo -e "  ${YELLOW}Internal Ports:${NC} Master: 999 | User: 777"
 echo -e "  ${YELLOW}Database Info:${NC} Secured with random credentials."
 echo -e "${GREEN}============================================================${NC}\n"
 echo -e "Thank you for choosing LogicPanel by LogicDock.cloud"
