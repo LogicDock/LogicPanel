@@ -54,6 +54,16 @@ else
     log_success "Docker installed."
 fi
 
+if ! command -v git &> /dev/null; then
+    log_info "Installing Git..."
+    if [ -f /etc/debian_version ]; then
+        apt-get update && apt-get install -y git
+    elif [ -f /etc/redhat-release ]; then
+        yum install -y git
+    fi
+    log_success "Git installed."
+fi
+
 if ! docker compose version &> /dev/null; then
     log_info "Installing Docker Compose Plugin..."
     mkdir -p /usr/libexec/docker/cli-plugins
