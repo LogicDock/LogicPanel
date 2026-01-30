@@ -41,7 +41,6 @@ verify_db.php
 logicpanel_backup.sql
 setup_db.php
 setup.ps1
-index_master.php
 bin/
 logicpanel/
 production/
