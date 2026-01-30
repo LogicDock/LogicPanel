@@ -89,12 +89,12 @@ class SettingsController
         file_put_contents($this->configFile, json_encode($current, JSON_PRETTY_PRINT));
 
         if ($restartRequired) {
-            // Trigger background restart with absolute path and logging
-            $cmd = "nohup sh -c \"sleep 1 && cd /var/www/html && docker compose up -d --force-recreate app\" > /var/www/html/storage/logs/restart.log 2>&1 &";
+            // Trigger background restart - docker-compose is in /opt/logicpanel
+            $cmd = "nohup sh -c \"sleep 2 && cd /opt/logicpanel && docker compose down app && docker compose up -d app\" > /var/www/html/storage/logs/restart.log 2>&1 &";
             exec($cmd);
 
             return $this->jsonResponse($response, [
-                'message' => 'Settings updated. Panel is restarting on new port(s)...',
+                'message' => 'Settings updated. Panel is restarting on new port(s). Please wait 30 seconds and refresh.',
                 'settings' => $current,
                 'restart' => true
             ]);
@@ -138,20 +138,24 @@ class SettingsController
             "https://checkip.amazonaws.com"
         ];
 
-        $ip = '127.0.0.1';
+        $ip = '';
         $success = false;
 
+        // Try external IP detection services
         foreach ($providers as $url) {
             try {
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Faster timeout per provider
+                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 $result = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
 
-                if ($result && filter_var(trim($result), FILTER_VALIDATE_IP)) {
+                if ($result && $httpCode === 200 && filter_var(trim($result), FILTER_VALIDATE_IP)) {
                     $ip = trim($result);
                     $success = true;
                     break;
@@ -161,8 +165,18 @@ class SettingsController
             }
         }
 
+        // Fallback: Try to resolve hostname to IP
+        if (!$success && !empty($_ENV['VIRTUAL_HOST'])) {
+            $hostname = $_ENV['VIRTUAL_HOST'];
+            $resolvedIp = gethostbyname($hostname);
+            if ($resolvedIp !== $hostname && filter_var($resolvedIp, FILTER_VALIDATE_IP)) {
+                $ip = $resolvedIp;
+                $success = true;
+            }
+        }
+
         return $this->jsonResponse($response, [
-            'ip' => $ip,
+            'ip' => $ip ?: '0.0.0.0',
             'success' => $success
         ]);
     }
@@ -192,21 +206,22 @@ class SettingsController
     private function loadSettings(): array
     {
         if (!file_exists($this->configFile)) {
+            // Use environment variables or empty defaults - no hardcoded values
             return [
-                'company_name' => 'LogicPanel',
-                'hostname' => 'server.cyberit.cloud',
-                'server_ip' => '127.0.0.1', // Default IP
-                'master_port' => 967,
-                'user_port' => 767,
-                'contact_email' => 'admin@cyberit.cloud',
+                'company_name' => '',
+                'hostname' => $_ENV['VIRTUAL_HOST'] ?? '',
+                'server_ip' => '', // Will be auto-detected, not hardcoded
+                'master_port' => (int) ($_ENV['MASTER_PORT'] ?? 999),
+                'user_port' => (int) ($_ENV['USER_PORT'] ?? 777),
+                'contact_email' => '',
                 'default_language' => 'en',
                 'timezone' => 'UTC',
-                'ns1' => 'ns1.cyberit.cloud',
-                'ns2' => 'ns2.cyberit.cloud',
+                'ns1' => '',
+                'ns2' => '',
                 'allow_registration' => true,
-                'shared_domain' => '', // Default shared domain
+                'shared_domain' => '',
                 'enable_ssl' => false,
-                'letsencrypt_email' => 'admin@cyberit.cloud'
+                'letsencrypt_email' => ''
             ];
         }
         return json_decode(file_get_contents($this->configFile), true) ?? [];

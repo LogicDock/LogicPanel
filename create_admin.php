@@ -98,16 +98,16 @@ CREATE TABLE IF NOT EXISTS domains (
 -- Databases Table
 CREATE TABLE IF NOT EXISTS `databases` (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    service_id INT UNSIGNED NOT NULL,
+    service_id INT UNSIGNED DEFAULT NULL,
     user_id INT UNSIGNED NOT NULL,
     db_type ENUM('mysql', 'postgresql', 'mongodb') NOT NULL,
     db_name VARCHAR(64) NOT NULL,
     db_user VARCHAR(64) NOT NULL,
     db_password TEXT NOT NULL,
-    db_host VARCHAR(255) NOT NULL,
-    db_port INT UNSIGNED NOT NULL,
+    db_host VARCHAR(255) NOT NULL DEFAULT 'localhost',
+    db_port INT UNSIGNED NOT NULL DEFAULT 3306,
+    status ENUM('pending', 'active', 'suspended', 'error') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_db_name (db_type, db_name),
     INDEX idx_service_id (service_id),
@@ -120,10 +120,10 @@ CREATE TABLE IF NOT EXISTS packages (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
-    cpu_limit DECIMAL(3,2) DEFAULT 0.50,
-    memory_limit VARCHAR(10) DEFAULT '512M',
-    disk_limit VARCHAR(10) DEFAULT '1G',
-    bandwidth_limit VARCHAR(10) DEFAULT '10G',
+    cpu_limit DECIMAL(5,2) DEFAULT 0.50,
+    memory_limit INT UNSIGNED DEFAULT 512,
+    storage_limit INT UNSIGNED DEFAULT 2048,
+    bandwidth_limit INT UNSIGNED DEFAULT 20480,
     email_limit INT UNSIGNED DEFAULT 10,
     ftp_limit INT UNSIGNED DEFAULT 1,
     db_limit INT UNSIGNED DEFAULT 3,
@@ -132,11 +132,9 @@ CREATE TABLE IF NOT EXISTS packages (
     max_addon_domains INT UNSIGNED DEFAULT 0,
     max_services INT UNSIGNED DEFAULT 1,
     max_databases INT UNSIGNED DEFAULT 3,
-    price DECIMAL(10,2) DEFAULT 0.00,
-    status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_status (status)
+    INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- User Packages Table
