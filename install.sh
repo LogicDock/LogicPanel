@@ -183,7 +183,8 @@ version: '3.8'
 
 services:
   app:
-    image: ghcr.io/logicdock/logicpanel:latest
+    build:
+      context: https://github.com/LogicDock/LogicPanel.git#main
     container_name: logicpanel_app
     ports:
       - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
@@ -332,9 +333,8 @@ EOF
 mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views storage/user-apps
 chmod -R 777 storage
 
-log_info "Pulling and starting containers..."
-docker compose pull
-docker compose up -d
+log_info "Starting containers..."
+docker compose up -d --build
 
 # Finalize configuration (waiting 20s for DB)
 log_info "Finalizing configuration (waiting 20s for DB)..."
