@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+# LogicPanel - Uninstaller
+# Author: LogicDock
+# Description: Completely removes LogicPanel and its associated data.
+
+set -e
+
+INSTALL_DIR="/opt/logicpanel"
+NGINX_PROXY_DIR="/opt/nginx-proxy"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Helpers
+log_info() { echo -e "\033[0;34m[INFO]\033[0m $1"; }
+log_success() { echo -e "${GREEN}[OK]\033[0m $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]\033[0m $1"; }
+
+# --- 1. Root Check ---
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root."
+   exit 1
+fi
+
+echo -e "${RED}!!! WARNING: THIS WILL DELETE ALL LOGICPANEL DATA !!!${NC}"
+read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
+if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+    echo "Uninstall cancelled."
+    exit 0
+fi
+
+# --- 2. Remove LogicPanel ---
+if [ -d "$INSTALL_DIR" ]; then
+    log_info "Stopping and removing LogicPanel containers..."
+    (cd "$INSTALL_DIR" && docker compose down -v)
+    log_info "Removing installation directory..."
+    rm -rf "$INSTALL_DIR"
+    log_success "LogicPanel files and volumes removed."
+else
+    log_warn "LogicPanel installation directory not found."
+fi
+
+# --- 3. Optional Proxy Removal ---
+read -p "Do you also want to remove the Nginx Reverse Proxy? (y/N): " PROXY_CONFIRM
+if [[ "$PROXY_CONFIRM" =~ ^[Yy]$ ]]; then
+    if [ -d "$NGINX_PROXY_DIR" ]; then
+        log_info "Stopping Nginx Reverse Proxy..."
+        (cd "$NGINX_PROXY_DIR" && docker compose down -v)
+        rm -rf "$NGINX_PROXY_DIR"
+        log_success "Reverse proxy removed."
+    fi
+    docker network rm nginx-proxy_web 2>/dev/null || true
+fi
+
+echo -e "\n-----------------------------------------------------------"
+echo -e "  ${GREEN}Uninstallation Complete!${NC}"
+echo -e "-----------------------------------------------------------"
+echo -e "  All containers, volumes, and files have been removed."
+echo -e "-----------------------------------------------------------"

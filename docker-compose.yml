@@ -1,0 +1,260 @@
+version: '3.8'
+
+networks:
+  logicpanel_network:
+    driver: bridge
+    internal: false
+  db_internal:
+    driver: bridge
+    internal: true
+
+volumes:
+  mysql_data:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  logicpanel_db_maria_data:
+  logicpanel_user_apps:
+  certs:
+  vhost:
+  html:
+
+
+services:
+  # Nginx Proxy - Automated Reverse Proxy
+  nginx-proxy:
+    image: jwilder/nginx-proxy:alpine
+    container_name: logicpanel_nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+    networks:
+      - logicpanel_network
+    environment:
+      - DEFAULT_HOST=panel.cyberit.cloud
+
+  # Let's Encrypt Companion
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: logicpanel_letsencrypt
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+    environment:
+      - NGINX_PROXY_CONTAINER=logicpanel_nginx_proxy
+    depends_on:
+      - nginx-proxy
+    networks:
+      - logicpanel_network
+
+  # LogicPanel Application (The Dashboard)
+  app:
+    build: .
+    container_name: logicpanel_app
+    restart: unless-stopped
+    ports:
+      - "${MASTER_PORT:-967}:80"
+      - "${USER_PORT:-767}:80"
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=logicpanel-db
+      - DB_PORT=3306
+      - DB_DATABASE=logicpanel
+      - DB_USERNAME=logicpanel
+      - DB_PASSWORD=logicpanel_password
+      - MYSQL_CONTAINER=lp-mysql-mother
+      - POSTGRES_CONTAINER=lp-postgres-mother
+      - MONGO_CONTAINER=lp-mongo-mother
+      # Docker Configuration
+      - DOCKER_NETWORK=${DOCKER_NETWORK}
+      - USER_APPS_PATH=/var/www/html/storage/user-apps
+      - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-c:/xampp/htdocs/storage/user-apps}
+      - APP_DOMAIN=${APP_DOMAIN:-cyberit.cloud}
+      - JWT_SECRET=${JWT_SECRET}
+      # Nginx Proxy Configuration
+      - VIRTUAL_HOST=panel.cyberit.cloud,localhost
+      - LETSENCRYPT_HOST=panel.cyberit.cloud
+      - VIRTUAL_PORT=80
+    volumes:
+      - .:/var/www/html
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - logicpanel_network
+      - db_internal
+    depends_on:
+      - logicpanel-db
+      - mysql
+      - postgres
+      - mongo
+      - redis
+      - nginx-proxy
+    # Terminal Gateway (PHP Ratchet Sidecar)
+  terminal-gateway:
+    build: ./services/gateway
+    container_name: logicpanel_gateway
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - logicpanel_network
+
+  # LogicPanel Dedicated Database (MariaDB 10.11)
+  logicpanel-db:
+    image: mariadb:10.11
+    container_name: logicpanel_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: logicpanel
+      MYSQL_USER: logicpanel
+      MYSQL_PASSWORD: logicpanel_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - logicpanel_db_maria_data:/var/lib/mysql
+    networks:
+      - db_internal
+
+  # MariaDB - Mother Container
+  mysql:
+    image: mariadb:11.2
+    container_name: lp-mysql-mother
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - db_internal
+      - logicpanel_network
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # PostgreSQL - Mother Container
+  postgres:
+    image: postgres:16-alpine
+    container_name: lp-postgres-mother
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
+      POSTGRES_DB: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - db_internal
+      - logicpanel_network
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # MongoDB - Mother Container
+  mongo:
+    image: mongo:7.0
+    container_name: lp-mongo-mother
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+      - ./docker/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - db_internal
+      - logicpanel_network
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # Redis - For Queue and Cache
+  redis:
+    image: redis:7-alpine
+    container_name: logicpanel_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - logicpanel_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # DB Provisioner Service (Microservice)
+  db-provisioner:
+    build: ./docker/db-provisioner
+    container_name: logicpanel_db_provisioner
+    restart: unless-stopped
+    # Expose port mostly for debugging, internal comm uses network
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - API_SECRET=${DB_PROVISIONER_SECRET}
+      - MYSQL_HOST=lp-mysql-mother
+      - MYSQL_PORT=3306
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - POSTGRES_HOST=lp-postgres-mother
+      - POSTGRES_PORT=5432
+      - POSTGRES_ROOT_PASSWORD=${POSTGRES_ROOT_PASSWORD}
+      - MONGO_HOST=lp-mongo-mother
+      - MONGO_PORT=27017
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    networks:
+      - logicpanel_network
+      - db_internal
+    depends_on:
+      - mysql
+      - postgres
+      - mongo
+
+  # Adminer - Database Management (Optional, for development)
+  adminer:
+    image: adminer:latest
+    container_name: logicpanel_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - db_internal
+      - logicpanel_network
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    profiles:
+      - dev

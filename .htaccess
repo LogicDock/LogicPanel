@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteRule ^public/api/(.*)$ public/api.php [QSA,L]
+
+# Redirect all requests to index.php if not a real file/directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
