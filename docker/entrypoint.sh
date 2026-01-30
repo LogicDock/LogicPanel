@@ -25,24 +25,43 @@ echo "=== SSL Certificate Setup ==="
 echo "Looking for certs for domain: $DOMAIN"
 echo "Certificate directory: $CERT_DIR"
 
-# Debug: List all files in cert directory
+# Debug: List all files in cert directory and domain subfolder
 echo "Files in $CERT_DIR:"
 ls -la "$CERT_DIR" 2>/dev/null || echo "(directory empty or not mounted)"
+if [ -d "$CERT_DIR/$DOMAIN" ]; then
+    echo "Files in $CERT_DIR/$DOMAIN:"
+    ls -la "$CERT_DIR/$DOMAIN" 2>/dev/null
+fi
 
 # Wait up to 90 seconds for certs to appear (LetsEncrypt companion needs time)
 CERT_FOUND=false
 for i in {1..18}; do
-    # Try multiple naming conventions used by nginx-proxy companion
+    # Pattern 1: domain.crt and domain.key (flat structure)
     if [ -f "$CERT_DIR/$DOMAIN.crt" ] && [ -f "$CERT_DIR/$DOMAIN.key" ]; then
-        echo "Found certificates: $DOMAIN.crt and $DOMAIN.key"
+        echo "Found certs (flat): $DOMAIN.crt and $DOMAIN.key"
         ln -sf "$CERT_DIR/$DOMAIN.crt" /etc/apache2/ssl/server.crt
         ln -sf "$CERT_DIR/$DOMAIN.key" /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
-    elif [ -f "$CERT_DIR/${DOMAIN}/fullchain.pem" ] && [ -f "$CERT_DIR/${DOMAIN}/privkey.pem" ]; then
-        echo "Found certificates: ${DOMAIN}/fullchain.pem and privkey.pem"
-        ln -sf "$CERT_DIR/${DOMAIN}/fullchain.pem" /etc/apache2/ssl/server.crt
-        ln -sf "$CERT_DIR/${DOMAIN}/privkey.pem" /etc/apache2/ssl/server.key
+    # Pattern 2: domain/fullchain.pem and domain/key.pem (nginx-proxy-companion standard)
+    elif [ -f "$CERT_DIR/$DOMAIN/fullchain.pem" ] && [ -f "$CERT_DIR/$DOMAIN/key.pem" ]; then
+        echo "Found certs (folder): $DOMAIN/fullchain.pem and key.pem"
+        ln -sf "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt
+        ln -sf "$CERT_DIR/$DOMAIN/key.pem" /etc/apache2/ssl/server.key
+        CERT_FOUND=true
+        break
+    # Pattern 3: domain/cert.pem and domain/key.pem
+    elif [ -f "$CERT_DIR/$DOMAIN/cert.pem" ] && [ -f "$CERT_DIR/$DOMAIN/key.pem" ]; then
+        echo "Found certs (folder): $DOMAIN/cert.pem and key.pem"
+        ln -sf "$CERT_DIR/$DOMAIN/cert.pem" /etc/apache2/ssl/server.crt
+        ln -sf "$CERT_DIR/$DOMAIN/key.pem" /etc/apache2/ssl/server.key
+        CERT_FOUND=true
+        break
+    # Pattern 4: domain/privkey.pem (some setups use this name)
+    elif [ -f "$CERT_DIR/$DOMAIN/fullchain.pem" ] && [ -f "$CERT_DIR/$DOMAIN/privkey.pem" ]; then
+        echo "Found certs (folder): $DOMAIN/fullchain.pem and privkey.pem"
+        ln -sf "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt
+        ln -sf "$CERT_DIR/$DOMAIN/privkey.pem" /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
     fi
