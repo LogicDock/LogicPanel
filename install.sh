@@ -187,18 +187,22 @@ log_info "Step 4: Deploying LogicPanel Services..."
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
+# Fetch source code to avoid Git dependencies for builds
+log_info "Fetching latest source code..."
+curl -sSL https://github.com/LogicDock/LogicPanel/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
+
 # --- 5. Step 4: Deployment ---
 cat > docker-compose.yml << EOF
 version: '3.8'
 
 services:
   app:
-    build:
-      context: https://github.com/LogicDock/LogicPanel.git#main
+    build: .
     container_name: logicpanel_app
+    restart: always
     ports:
-      - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
-      - "${USER_PORT:-777}:${USER_PORT:-777}"
+      - "\${MASTER_PORT:-999}:\${MASTER_PORT:-999}"
+      - "\${USER_PORT:-777}:\${USER_PORT:-777}"
     environment:
       VIRTUAL_HOST: ${PANEL_DOMAIN}
       LETSENCRYPT_HOST: ${PANEL_DOMAIN}
@@ -233,8 +237,7 @@ services:
       - redis
 
   terminal-gateway:
-    build:
-      context: https://github.com/LogicDock/LogicPanel.git#main:services/gateway
+    build: ./services/gateway
     container_name: logicpanel_gateway
     restart: always
     ports:
@@ -311,8 +314,7 @@ services:
       - internal
 
   db-provisioner:
-    build:
-      context: https://github.com/LogicDock/LogicPanel.git#main:docker/db-provisioner
+    build: ./docker/db-provisioner
     container_name: logicpanel_db_provisioner
     restart: always
     environment:
@@ -339,7 +341,7 @@ networks:
 
 EOF
 
-# Create storage layout
+# Create storage layout (if not already fetched via tar)
 mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views storage/user-apps
 chmod -R 777 storage
 
