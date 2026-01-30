@@ -77,7 +77,7 @@ services:
       # Docker Configuration
       - DOCKER_NETWORK=${DOCKER_NETWORK}
       - USER_APPS_PATH=/var/www/html/storage/user-apps
-      - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-c:/xampp/htdocs/storage/user-apps}
+      - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-/opt/logicpanel/storage/user-apps}
       - APP_DOMAIN=${APP_DOMAIN:-cyberit.cloud}
       - JWT_SECRET=${JWT_SECRET}
       # Nginx Proxy Configuration

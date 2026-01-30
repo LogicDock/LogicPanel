@@ -23,7 +23,8 @@ class SystemBridgeService
             // Windows / XAMPP Dev Mode
             $binPath = realpath(__DIR__ . '/../../../../bin/logicpanel-helper');
             if (!$binPath) {
-                $binPath = 'c:/xampp/htdocs/bin/logicpanel-helper';
+                // Fallback for dev env structure if realpath fails
+                $binPath = __DIR__ . '/../../../../bin/logicpanel-helper';
             }
             $this->helperCommand = 'php "' . $binPath . '"';
         } else {
