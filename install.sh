@@ -124,26 +124,34 @@ fi
 # --- 4. Step 3: Interaction ---
 log_info "Step 3: Panel Setup (Interactive)"
 
+# Redirect stdin from tty to allow interactive input when piped
+exec 3<&0
+exec < /dev/tty
+
 echo ""
-read -p "--- Enter Panel Domain (e.g., panel.example.cloud): " PANEL_DOMAIN < /dev/tty
+read -p "--- Enter Hostname (e.g., panel.example.com): " PANEL_DOMAIN
 while [[ -z "$PANEL_DOMAIN" ]]; do
-    read -p "--- ! Domain required: " PANEL_DOMAIN < /dev/tty
+    read -p "--- ! Hostname required: " PANEL_DOMAIN
 done
 
-read -p "--- Enter Admin Username (default: logicadmin): " ADMIN_USER < /dev/tty
+read -p "--- Enter Admin Username (default: logicadmin): " ADMIN_USER
 ADMIN_USER=${ADMIN_USER:-logicadmin}
 
-read -p "--- Enter Admin Email: " ADMIN_EMAIL < /dev/tty
+read -p "--- Enter Admin Email: " ADMIN_EMAIL
 while [[ -z "$ADMIN_EMAIL" ]]; do
-    read -p "--- ! Email required: " ADMIN_EMAIL < /dev/tty
+    read -p "--- ! Email required: " ADMIN_EMAIL
 done
 
-read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS < /dev/tty
+read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS
 echo ""
 while [[ ${#ADMIN_PASS} -lt 8 ]]; do
-    read -s -p "--- ! Password too short. Try again: " ADMIN_PASS < /dev/tty
+    read -s -p "--- ! Password too short. Try again: " ADMIN_PASS
     echo ""
 done
+
+# Restore original stdin
+exec <&3
+exec 3<&-
 
 # Random Secrets for Security
 DB_NAME="lp_db_$(generate_random 8)"

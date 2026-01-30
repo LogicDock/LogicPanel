@@ -7,7 +7,7 @@ LogicPanel is a modern, high-performance control panel designed for hosting **No
 Get your panel up and running in seconds on any clean Ubuntu/Debian/CentOS/AlmaLinux server.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh | sudo bash
+bash <(curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh)
 ```
 
 ## ✨ Core Features
@@ -41,7 +41,7 @@ All database names, users, and internal secrets are **randomly generated** per i
 To completely remove LogicPanel and all associated Docker data:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/uninstall.sh | sudo bash
+bash <(curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/uninstall.sh)
 ```
 
 ## 🤝 Support & Contribution

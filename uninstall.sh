@@ -33,10 +33,15 @@ echo "  LOGICPANEL UNINSTALLER   "
 echo "-----------------------------------------------------------"
 echo -e "${NC}"
 
+# Redirect stdin from tty to allow interactive input when piped
+exec 3<&0
+exec < /dev/tty
+
 echo -e "${RED}!!! WARNING: THIS WILL PERMANENTLY DELETE ALL DATA !!!${NC}"
-read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM < /dev/tty
+read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Uninstall cancelled."
+    exec <&3 # Restore for cleanup
     exit 0
 fi
 
@@ -51,7 +56,11 @@ else
 fi
 
 # --- 3. Optional Proxy Removal ---
-read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM < /dev/tty
+read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM
+
+# Restore original stdin
+exec <&3
+exec 3<&-
 if [[ "$PROXY_CONFIRM" =~ ^[Yy]$ ]]; then
     if [ -d "$NGINX_PROXY_DIR" ]; then
         log_info "Stopping Nginx Reverse Proxy..."
