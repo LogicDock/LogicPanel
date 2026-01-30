@@ -129,7 +129,7 @@ $effectivePort = $hostPort ?: ($fwPort ?: $serverPort);
 $isApi = (strpos($path, 'public/api') === 0 || strpos($path, 'api/') === 0);
 
 // If Port matches MASTER_PORT, load Master Panel Frontend, UNLESS it is an API request
-$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 967);
+$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 999);
 if (
     ((int) $effectivePort === $masterPort || getenv('APP_MODE') === 'master' || strpos((string) $serverPort, (string) 
         $masterPort) !== false) && !$isApi

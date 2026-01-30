@@ -185,7 +185,6 @@ services:
   app:
     image: ghcr.io/logicdock/logicpanel:latest
     container_name: logicpanel_app
-    restart: always
     ports:
       - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
       - "${USER_PORT:-777}:${USER_PORT:-777}"
@@ -199,6 +198,9 @@ services:
       DB_DATABASE: ${DB_NAME}
       DB_USERNAME: ${DB_USER}
       DB_PASSWORD: ${DB_PASS}
+      MYSQL_CONTAINER: lp-mysql-mother
+      POSTGRES_CONTAINER: lp-postgres-mother
+      MONGO_CONTAINER: lp-mongo-mother
       JWT_SECRET: ${JWT_SECRET}
       ENCRYPTION_KEY: ${ENC_KEY}
       APP_URL: https://${PANEL_DOMAIN}
@@ -212,9 +214,28 @@ services:
     networks:
       - nginx-proxy_web
       - internal
+    depends_on:
+      - logicpanel_db
+      - mysql
+      - postgres
+      - mongo
+      - redis
+
+  terminal-gateway:
+    image: ghcr.io/logicdock/logicpanel-gateway:latest
+    container_name: logicpanel_gateway
+    restart: always
+    ports:
+      - "3002:3002"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - nginx-proxy_web
 
   logicpanel_db:
-    image: mysql:8.0
+    image: mariadb:10.11
     container_name: logicpanel_db
     restart: always
     environment:
@@ -223,9 +244,74 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
     volumes:
-      - ./mysql_data:/var/lib/mysql
+      - ./mysql_data_main:/var/lib/mysql
     networks:
       - internal
+
+  mysql:
+    image: mariadb:11.2
+    container_name: lp-mysql-mother
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_PASS}
+    volumes:
+      - ./mysql_data_mother:/var/lib/mysql
+    networks:
+      - internal
+      - nginx-proxy_web
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: lp-postgres-mother
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${ROOT_PASS}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+      - nginx-proxy_web
+
+  mongo:
+    image: mongo:7.0
+    container_name: lp-mongo-mother
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_PASSWORD: ${ROOT_PASS}
+      MONGO_INITDB_ROOT_USERNAME: root
+    volumes:
+      - ./mongo_data:/data/db
+    networks:
+      - internal
+      - nginx-proxy_web
+
+  redis:
+    image: redis:7-alpine
+    container_name: logicpanel_redis
+    restart: always
+    networks:
+      - internal
+
+  db-provisioner:
+    image: ghcr.io/logicdock/logicpanel-provisioner:latest
+    container_name: logicpanel_db_provisioner
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${ROOT_PASS}
+      - POSTGRES_ROOT_PASSWORD=${ROOT_PASS}
+      - MONGO_ROOT_PASSWORD=${ROOT_PASS}
+    networks:
+      - internal
+    depends_on:
+      - mysql
+      - postgres
+      - mongo
 
 volumes:
   certs:
