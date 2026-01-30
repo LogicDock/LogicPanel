@@ -16,9 +16,14 @@ volumes:
   logicpanel_db_maria_data:
   logicpanel_user_apps:
   certs:
+    external: true
+    name: nginx-proxy_certs
   vhost:
+    external: true
+    name: nginx-proxy_vhost
   html:
-
+    external: true
+    name: nginx-proxy_html
 
 services:
   # Nginx Proxy - Automated Reverse Proxy

@@ -224,6 +224,11 @@ services:
     networks:
       - internal
 
+volumes:
+  certs:
+    external: true
+    name: nginx-proxy_certs
+
 networks:
   nginx-proxy_web:
     external: true
