@@ -28,20 +28,19 @@ class SystemBridgeService
             }
             $this->helperCommand = 'php "' . $binPath . '"';
         } else {
-            // Linux / Docker Mode
+            // Linux / Docker Mode - No sudo needed, container runs as root
             $dockerPath = '/var/www/html/bin/logicpanel-helper';
             if (file_exists($dockerPath)) {
-                // Check if sudo exists
-                $hasSudo = false;
-                if (getmyuid() !== 0) {
-                    exec('which sudo', $o, $res);
-                    $hasSudo = ($res === 0);
-                }
-                $sudo = $hasSudo ? 'sudo ' : '';
-                $this->helperCommand = "{$sudo}php \"{$dockerPath}\"";
+                $this->helperCommand = "php \"{$dockerPath}\"";
             } else {
-                // Production standalone
-                $this->helperCommand = 'sudo /usr/local/bin/logicpanel-helper';
+                // Production standalone - check if we're root or need sudo
+                $helperPath = '/usr/local/bin/logicpanel-helper';
+                if (getmyuid() === 0) {
+                    $this->helperCommand = $helperPath;
+                } else {
+                    // Only use sudo if not running as root
+                    $this->helperCommand = "sudo {$helperPath}";
+                }
             }
         }
     }
