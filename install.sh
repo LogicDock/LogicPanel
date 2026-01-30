@@ -357,8 +357,9 @@ EOF
 mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views storage/user-apps
 chmod -R 777 storage
 
-log_info "Starting containers..."
-docker compose up -d --build
+log_info "Building and starting containers (this may take 2-5 minutes)..."
+docker compose build --no-cache
+docker compose up -d
 
 # Finalize configuration (waiting 20s for DB)
 log_info "Finalizing configuration (waiting 20s for DB)..."
