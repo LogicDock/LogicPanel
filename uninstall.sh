@@ -34,7 +34,7 @@ echo "-----------------------------------------------------------"
 echo -e "${NC}"
 
 echo -e "${RED}!!! WARNING: THIS WILL PERMANENTLY DELETE ALL DATA !!!${NC}"
-read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
+read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM < /dev/tty
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Uninstall cancelled."
     exit 0
@@ -51,7 +51,7 @@ else
 fi
 
 # --- 3. Optional Proxy Removal ---
-read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM
+read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM < /dev/tty
 if [[ "$PROXY_CONFIRM" =~ ^[Yy]$ ]]; then
     if [ -d "$NGINX_PROXY_DIR" ]; then
         log_info "Stopping Nginx Reverse Proxy..."

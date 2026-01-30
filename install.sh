@@ -125,23 +125,23 @@ fi
 log_info "Step 3: Panel Setup (Interactive)"
 
 echo ""
-read -p "--- Enter Panel Domain (e.g., panel.example.cloud): " PANEL_DOMAIN
+read -p "--- Enter Panel Domain (e.g., panel.example.cloud): " PANEL_DOMAIN < /dev/tty
 while [[ -z "$PANEL_DOMAIN" ]]; do
-    read -p "--- ! Domain required: " PANEL_DOMAIN
+    read -p "--- ! Domain required: " PANEL_DOMAIN < /dev/tty
 done
 
-read -p "--- Enter Admin Username (default: logicadmin): " ADMIN_USER
+read -p "--- Enter Admin Username (default: logicadmin): " ADMIN_USER < /dev/tty
 ADMIN_USER=${ADMIN_USER:-logicadmin}
 
-read -p "--- Enter Admin Email: " ADMIN_EMAIL
+read -p "--- Enter Admin Email: " ADMIN_EMAIL < /dev/tty
 while [[ -z "$ADMIN_EMAIL" ]]; do
-    read -p "--- ! Email required: " ADMIN_EMAIL
+    read -p "--- ! Email required: " ADMIN_EMAIL < /dev/tty
 done
 
-read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS
+read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS < /dev/tty
 echo ""
 while [[ ${#ADMIN_PASS} -lt 8 ]]; do
-    read -s -p "--- ! Password too short. Try again: " ADMIN_PASS
+    read -s -p "--- ! Password too short. Try again: " ADMIN_PASS < /dev/tty
     echo ""
 done
 
@@ -153,11 +153,11 @@ ROOT_PASS=$(generate_random 32)
 JWT_SECRET=$(generate_random 64)
 ENC_KEY=$(generate_random 32)
 
-# --- 5. Step 4: Deployment ---
 log_info "Step 4: Deploying LogicPanel Services..."
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
+# --- 5. Step 4: Deployment ---
 cat > docker-compose.yml << EOF
 version: '3.8'
 
@@ -219,19 +219,23 @@ log_info "Pulling and starting containers..."
 docker compose pull
 docker compose up -d
 
-log_info "Finalizing configuration (waiting 15s for DB)..."
-sleep 15
+log_info "Finalizing configuration (waiting 20s for DB)..."
+sleep 20
 
-# Use a clean setup script inside the container to create the admin
-# Assuming the image has index.php and core controllers
-docker exec logicpanel_app php create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}" || true
+# Download and Inject Admin Setup Script (ensures it's present even if image is old)
+curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create_admin.php" -o create_admin.php
+docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
+rm create_admin.php
+
+# Execute Admin Creation
+docker exec logicpanel_app php create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"
 
 log_success "LogicPanel is now LIVE!"
 echo -e "\n${GREEN}============================================================${NC}"
-echo -e "  ${WHITE}Panel URL:${NC}   ${CYAN}https://${PANEL_DOMAIN}${NC}"
-echo -e "  ${WHITE}Admin User:${NC}  ${CYAN}${ADMIN_USER}${NC}"
-echo -e "  ${WHITE}Admin Email:${NC} ${CYAN}${ADMIN_EMAIL}${NC}"
-echo -e "  ${WHITE}Admin Pass:${NC}  ${CYAN}${ADMIN_PASS}${NC}"
+echo -e "  Panel URL:   ${CYAN}https://${PANEL_DOMAIN}${NC}"
+echo -e "  Admin User:  ${CYAN}${ADMIN_USER}${NC}"
+echo -e "  Admin Email: ${CYAN}${ADMIN_EMAIL}${NC}"
+echo -e "  Admin Pass:  ${CYAN}${ADMIN_PASS}${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo -e "  ${YELLOW}Internal Ports:${NC} Master: 967 | User: 676"
 echo -e "  ${YELLOW}Database Info:${NC} Secured with random credentials."
