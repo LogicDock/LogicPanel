@@ -222,7 +222,8 @@ services:
       - redis
 
   terminal-gateway:
-    image: ghcr.io/logicdock/logicpanel-gateway:latest
+    build:
+      context: https://github.com/LogicDock/LogicPanel.git#main:services/gateway
     container_name: logicpanel_gateway
     restart: always
     ports:
@@ -299,7 +300,8 @@ services:
       - internal
 
   db-provisioner:
-    image: ghcr.io/logicdock/logicpanel-provisioner:latest
+    build:
+      context: https://github.com/LogicDock/LogicPanel.git#main:docker/db-provisioner
     container_name: logicpanel_db_provisioner
     restart: always
     environment:
