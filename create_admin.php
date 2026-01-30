@@ -4,6 +4,12 @@
  * This script is dependency-free to ensure it runs even if vendor is missing.
  */
 
+// Security: Prevent web access
+if (php_sapi_name() !== 'cli') {
+    header('HTTP/1.1 403 Forbidden');
+    die("Access Denied: This script can only be run via CLI.");
+}
+
 // Parse CLI Arguments
 $options = getopt("", ["user:", "email:", "pass:"]);
 $username = $options['user'] ?? 'admin';

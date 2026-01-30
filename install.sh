@@ -247,6 +247,7 @@ rm create_admin.php
 
 # Execute Admin Creation
 docker exec logicpanel_app php create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"
+docker exec logicpanel_app rm /var/www/html/create_admin.php
 
 log_success "LogicPanel is now LIVE!"
 echo -e "\n${GREEN}============================================================${NC}"
