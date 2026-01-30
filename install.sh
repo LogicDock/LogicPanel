@@ -129,24 +129,34 @@ exec 3<&0
 exec < /dev/tty
 
 echo ""
-read -p "--- Enter Hostname (e.g., panel.example.com): " PANEL_DOMAIN
+read -p "--- Enter Hostname (e.g., panel.example.cloud): " PANEL_DOMAIN
 while [[ -z "$PANEL_DOMAIN" ]]; do
     read -p "--- ! Hostname required: " PANEL_DOMAIN
 done
 
-read -p "--- Enter Admin Username (default: logicadmin): " ADMIN_USER
-ADMIN_USER=${ADMIN_USER:-logicadmin}
+RANDOM_ADMIN="admin_$(generate_random 5)"
+read -p "--- Enter Admin Username (default: $RANDOM_ADMIN): " ADMIN_USER
+ADMIN_USER=${ADMIN_USER:-$RANDOM_ADMIN}
 
 read -p "--- Enter Admin Email: " ADMIN_EMAIL
 while [[ -z "$ADMIN_EMAIL" ]]; do
     read -p "--- ! Email required: " ADMIN_EMAIL
 done
 
-read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS
-echo ""
-while [[ ${#ADMIN_PASS} -lt 8 ]]; do
-    read -s -p "--- ! Password too short. Try again: " ADMIN_PASS
+while true; do
+    read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS
     echo ""
+    if [[ ${#ADMIN_PASS} -lt 8 ]]; then
+        echo -e "${RED}--- ! Password too short. Min 8 characters.${NC}"
+        continue
+    fi
+    read -s -p "--- Enter Admin Password Again: " ADMIN_PASS_CONFIRM
+    echo ""
+    if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ]]; then
+        break
+    else
+        echo -e "${RED}--- ! Passwords do not match. Try again.${NC}"
+    fi
 done
 
 # Restore original stdin
