@@ -35,6 +35,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
+# Copy application files
+COPY . .
+
+# Install dependencies via Composer
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
 # Configuration for Apache
 ENV APACHE_DOCUMENT_ROOT /var/www/html
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
@@ -49,7 +55,8 @@ RUN echo "upload_max_filesize = 512M" > /usr/local/etc/php/conf.d/uploads.ini \
     && echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini
 
 # Fix permissions
-RUN chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage
 
 # Setup entrypoint
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
