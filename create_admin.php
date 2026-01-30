@@ -1,17 +1,8 @@
 <?php
 /**
- * LogicPanel - CLI Admin Creator
- * This script is used by the installer to set up the initial admin account.
+ * LogicPanel - CLI Admin Creator (Standalone Version)
+ * This script is dependency-free to ensure it runs even if vendor is missing.
  */
-
-require 'vendor/autoload.php';
-use Dotenv\Dotenv;
-
-// Load Env
-if (file_exists(__DIR__ . '/.env')) {
-    $dotenv = Dotenv::createImmutable(__DIR__);
-    $dotenv->load();
-}
 
 // Parse CLI Arguments
 $options = getopt("", ["user:", "email:", "pass:"]);
@@ -20,22 +11,31 @@ $email = $options['email'] ?? 'admin@example.cloud';
 $password = $options['pass'] ?? 'logicpanel123';
 
 try {
-    $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-    $db = $_ENV['DB_DATABASE'] ?? 'logicpanel';
-    $user = $_ENV['DB_USERNAME'] ?? 'root';
-    $pass = $_ENV['DB_PASSWORD'] ?? '';
+    // Prefer getenv() as it works regardless of variables_order in php.ini
+    $host = getenv('DB_HOST') ?: '127.0.0.1';
+    $db = getenv('DB_DATABASE') ?: 'logicpanel';
+    $user = getenv('DB_USERNAME') ?: 'root';
+    $pass = getenv('DB_PASSWORD') ?: '';
 
     // Connect to MySQL
-    $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 
-    // Ensure schema exists (basic table check)
+    // Ensure users table exists
     $stmt = $pdo->query("SHOW TABLES LIKE 'users'");
     if (!$stmt->fetch()) {
-        $schema = file_get_contents(__DIR__ . '/database/schema.sql');
-        if ($schema) {
-            $pdo->exec($schema);
-            echo "Database schema imported.\n";
+        $schemaPath = __DIR__ . '/database/schema.sql';
+        if (file_exists($schemaPath)) {
+            $schema = file_get_contents($schemaPath);
+            if ($schema) {
+                $pdo->exec($schema);
+                echo "Database schema imported.\n";
+            }
+        } else {
+            throw new Exception("Schema file not found at $schemaPath");
         }
     }
 
