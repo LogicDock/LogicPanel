@@ -2,14 +2,14 @@
 
 # LogicPanel - One-Line Installer
 # Author: LogicDock
-# Description: Automated installer for LogicPanel with Docker, Nginx Proxy, and SSL.
+# Description: Automated, zero-hassle installer for LogicPanel with Docker, Nginx Proxy, and SSL.
+# License: Proprietary
 
 set -e
 
 # --- Configuration ---
 INSTALL_DIR="/opt/logicpanel"
 NGINX_PROXY_DIR="/opt/nginx-proxy"
-GITHUB_RAW="https://raw.githubusercontent.com/LogicDock/LogicPanel/main"
 
 # Colors
 RED='\033[0;31m'
@@ -28,17 +28,8 @@ generate_random() { cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w "$1" | head 
 
 # --- 1. Root Check ---
 if [[ $EUID -ne 0 ]]; then
-   log_error "This script must be run as root. Try: sudo bash install.sh"
+   log_error "This script must be run as root. Try: sudo bash <(curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh)"
    exit 1
-fi
-
-# --- 2. OS Detection ---
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    OS_NAME=$NAME
-else
-    log_error "Unsupported OS. Please use Ubuntu/Debian/CentOS/AlmaLinux."
-    exit 1
 fi
 
 clear
@@ -52,31 +43,34 @@ echo "╚══════╝ ╚═════╝  ╚═════╝ ╚�
 echo -e "${NC}"
 echo -e "--- ${YELLOW}LogicPanel Automated Installation${NC} ---\n"
 
-# --- 3. Docker Installation ---
-log_info "Step 1: Checking Docker Environment..."
+# --- 2. Step 1: Dependencies ---
+log_info "Step 1: Preparing Docker Environment..."
 if command -v docker &> /dev/null; then
-    log_success "Docker is already installed. Skipping..."
+    log_success "Docker is already installed."
 else
-    log_info "Docker not found. Installing..."
+    log_info "Installing Docker..."
     curl -fsSL https://get.docker.com | sh
     systemctl enable --now docker
-    log_success "Docker installed successfully."
+    log_success "Docker installed."
 fi
 
 if ! docker compose version &> /dev/null; then
-    log_info "Installing Docker Compose..."
-    # Usually get.docker.com installs the plugin, but just in case
-    apt-get update && apt-get install -y docker-compose-plugin || yum install -y docker-compose-plugin
+    log_info "Installing Docker Compose Plugin..."
+    if [ -f /etc/debian_version ]; then
+        apt-get update && apt-get install -y docker-compose-plugin
+    elif [ -f /etc/redhat-release ]; then
+        yum install -y docker-compose-plugin
+    fi
 fi
 
-# --- 4. Nginx Proxy Manager Setup ---
+# --- 3. Step 2: Nginx Reverse Proxy ---
 log_info "Step 2: Configuring Reverse Proxy (Nginx + Let's Encrypt)..."
 docker network inspect nginx-proxy_web &>/dev/null || docker network create nginx-proxy_web
 
 if docker ps -a --format '{{.Names}}' | grep -q "^nginx-proxy$"; then
-    log_warn "Nginx Proxy is already running. Skipping setup..."
+    log_warn "Nginx Proxy is already active. Using existing one."
 else
-    log_info "Deploying Nginx Proxy Manager companion..."
+    log_info "Deploying Nginx Proxy Manager..."
     mkdir -p $NGINX_PROXY_DIR
     cat > $NGINX_PROXY_DIR/docker-compose.yml << 'EOF'
 version: '3'
@@ -124,46 +118,46 @@ networks:
     external: true
 EOF
     (cd $NGINX_PROXY_DIR && docker compose up -d)
-    log_success "Reverse proxy deployed."
+    log_success "Proxy deployed."
 fi
 
-# --- 5. LogicPanel Configuration ---
-log_info "Step 3: Panel Configuration"
+# --- 4. Step 3: Interaction ---
+log_info "Step 3: Panel Setup (Interactive)"
 
-read -p "Enter Panel Domain (e.g., panel.yourdomain.com): " PANEL_DOMAIN
+echo ""
+read -p "--- Enter Panel Domain (e.g., panel.example.cloud): " PANEL_DOMAIN
 while [[ -z "$PANEL_DOMAIN" ]]; do
-    read -p "Domain cannot be empty. Enter Panel Domain: " PANEL_DOMAIN
+    read -p "--- ! Domain required: " PANEL_DOMAIN
 done
 
-read -p "Enter Admin Username (default: admin): " ADMIN_USER
-ADMIN_USER=${ADMIN_USER:-admin}
+read -p "--- Enter Admin Username (default: logicadmin): " ADMIN_USER
+ADMIN_USER=${ADMIN_USER:-logicadmin}
 
-read -p "Enter Admin Email: " ADMIN_EMAIL
+read -p "--- Enter Admin Email: " ADMIN_EMAIL
 while [[ -z "$ADMIN_EMAIL" ]]; do
-    read -p "Email cannot be empty. Enter Admin Email: " ADMIN_EMAIL
+    read -p "--- ! Email required: " ADMIN_EMAIL
 done
 
-read -s -p "Enter Admin Password (min 8 chars): " ADMIN_PASS
+read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS
 echo ""
 while [[ ${#ADMIN_PASS} -lt 8 ]]; do
-    read -s -p "Password too short. Enter Admin Password: " ADMIN_PASS
+    read -s -p "--- ! Password too short. Try again: " ADMIN_PASS
     echo ""
 done
 
-# Random Database Credentials
-DB_NAME="lp_$(generate_random 8)"
-DB_USER="user_$(generate_random 8)"
-DB_PASS=$(generate_random 24)
-MYSQL_ROOT_PASS=$(generate_random 24)
+# Random Secrets for Security
+DB_NAME="lp_db_$(generate_random 8)"
+DB_USER="lp_user_$(generate_random 8)"
+DB_PASS=$(generate_random 32)
+ROOT_PASS=$(generate_random 32)
 JWT_SECRET=$(generate_random 64)
+ENC_KEY=$(generate_random 32)
 
-# --- 6. Deployment ---
-log_info "Step 4: Deploying LogicPanel..."
+# --- 5. Step 4: Deployment ---
+log_info "Step 4: Deploying LogicPanel Services..."
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
-# Fetch main docker-compose and other files from GitHub
-# In this implementation, we will use a pre-defined production docker-compose
 cat > docker-compose.yml << EOF
 version: '3.8'
 
@@ -182,11 +176,12 @@ services:
       DB_DATABASE: ${DB_NAME}
       DB_USERNAME: ${DB_USER}
       DB_PASSWORD: ${DB_PASS}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASS}
       JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENC_KEY}
       APP_URL: https://${PANEL_DOMAIN}
       MASTER_PORT: 967
-      USER_PORT: 767
+      USER_PORT: 676
+      APP_ENV: production
     volumes:
       - ./storage:/var/www/html/storage
       - /var/run/docker.sock:/var/run/docker.sock:rw
@@ -199,7 +194,7 @@ services:
     container_name: logicpanel_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASS}
+      MYSQL_ROOT_PASSWORD: ${ROOT_PASS}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
@@ -216,34 +211,29 @@ networks:
 
 EOF
 
-# Create storage directory and set permissions
+# Create storage layout
 mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views storage/user-apps
 chmod -R 777 storage
 
-log_info "Starting containers..."
+log_info "Pulling and starting containers..."
 docker compose pull
 docker compose up -d
 
-# Wait for DB
-log_info "Waiting for database to initialize..."
-sleep 20
+log_info "Finalizing configuration (waiting 15s for DB)..."
+sleep 15
 
-# Create Admin Account via internal script (assuming app has a CLI or entrypoint)
-# For now, we will assume the app image handles basic setup or we can exec into it
+# Use a clean setup script inside the container to create the admin
+# Assuming the image has index.php and core controllers
 docker exec logicpanel_app php create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}" || true
 
-log_success "LogicPanel successfully installed!"
-echo -e "\n-----------------------------------------------------------"
-echo -e "  ${GREEN}Installation Complete!${NC}"
-echo -e "-----------------------------------------------------------"
-echo -e "  Domain:   ${CYAN}https://${PANEL_DOMAIN}${NC}"
-echo -e "  Admin:    ${CYAN}${ADMIN_USER}${NC}"
-echo -e "  Email:    ${CYAN}${ADMIN_EMAIL}${NC}"
-echo -e "  Password: ${CYAN}${ADMIN_PASS}${NC}"
-echo -e "-----------------------------------------------------------"
-echo -e "  ${YELLOW}Database Credentials (Hidden for security):${NC}"
-echo -e "  DB Name:    $DB_NAME"
-echo -e "  DB User:    $DB_USER"
-echo -e "  JWT Secret: $JWT_SECRET"
-echo -e "-----------------------------------------------------------"
-echo -e "\nEnjoy your new hosting panel!"
+log_success "LogicPanel is now LIVE!"
+echo -e "\n${GREEN}============================================================${NC}"
+echo -e "  ${WHITE}Panel URL:${NC}   ${CYAN}https://${PANEL_DOMAIN}${NC}"
+echo -e "  ${WHITE}Admin User:${NC}  ${CYAN}${ADMIN_USER}${NC}"
+echo -e "  ${WHITE}Admin Email:${NC} ${CYAN}${ADMIN_EMAIL}${NC}"
+echo -e "  ${WHITE}Admin Pass:${NC}  ${CYAN}${ADMIN_PASS}${NC}"
+echo -e "${GREEN}============================================================${NC}"
+echo -e "  ${YELLOW}Internal Ports:${NC} Master: 967 | User: 676"
+echo -e "  ${YELLOW}Database Info:${NC} Secured with random credentials."
+echo -e "${GREEN}============================================================${NC}\n"
+echo -e "Thank you for choosing LogicPanel by LogicDock.cloud"

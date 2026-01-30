@@ -2,7 +2,7 @@
 
 # LogicPanel - Uninstaller
 # Author: LogicDock
-# Description: Completely removes LogicPanel and its associated data.
+# Description: Completely removes LogicPanel and its data.
 
 set -e
 
@@ -26,30 +26,36 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-echo -e "${RED}!!! WARNING: THIS WILL DELETE ALL LOGICPANEL DATA !!!${NC}"
+clear
+echo -e "${RED}"
+echo "-----------------------------------------------------------"
+echo "  LOGICPANEL UNINSTALLER   "
+echo "-----------------------------------------------------------"
+echo -e "${NC}"
+
+echo -e "${RED}!!! WARNING: THIS WILL PERMANENTLY DELETE ALL DATA !!!${NC}"
 read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Uninstall cancelled."
     exit 0
 fi
 
-# --- 2. Remove LogicPanel ---
+# --- 2. Remove Panel ---
 if [ -d "$INSTALL_DIR" ]; then
-    log_info "Stopping and removing LogicPanel containers..."
-    (cd "$INSTALL_DIR" && docker compose down -v)
-    log_info "Removing installation directory..."
+    log_info "Stopping and removing LogicPanel infrastructure..."
+    (cd "$INSTALL_DIR" && docker compose down -v 2>/dev/null || true)
     rm -rf "$INSTALL_DIR"
     log_success "LogicPanel files and volumes removed."
 else
-    log_warn "LogicPanel installation directory not found."
+    log_warn "LogicPanel directory not found at $INSTALL_DIR."
 fi
 
 # --- 3. Optional Proxy Removal ---
-read -p "Do you also want to remove the Nginx Reverse Proxy? (y/N): " PROXY_CONFIRM
+read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM
 if [[ "$PROXY_CONFIRM" =~ ^[Yy]$ ]]; then
     if [ -d "$NGINX_PROXY_DIR" ]; then
         log_info "Stopping Nginx Reverse Proxy..."
-        (cd "$NGINX_PROXY_DIR" && docker compose down -v)
+        (cd "$NGINX_PROXY_DIR" && docker compose down -v 2>/dev/null || true)
         rm -rf "$NGINX_PROXY_DIR"
         log_success "Reverse proxy removed."
     fi
@@ -59,5 +65,5 @@ fi
 echo -e "\n-----------------------------------------------------------"
 echo -e "  ${GREEN}Uninstallation Complete!${NC}"
 echo -e "-----------------------------------------------------------"
-echo -e "  All containers, volumes, and files have been removed."
+echo -e "  For more info, visit: https://logicdock.cloud"
 echo -e "-----------------------------------------------------------"

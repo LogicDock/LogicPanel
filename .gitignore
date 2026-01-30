@@ -26,7 +26,6 @@ Thumbs.db
 check_current_schema.php
 check_packages_schema.php
 clean_schema_check.php
-create_admin.php
 debug_*.php
 deep_debug.php
 dump_users.php
