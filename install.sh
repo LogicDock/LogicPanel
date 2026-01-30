@@ -56,11 +56,13 @@ fi
 
 if ! docker compose version &> /dev/null; then
     log_info "Installing Docker Compose Plugin..."
-    if [ -f /etc/debian_version ]; then
-        apt-get update && apt-get install -y docker-compose-plugin
-    elif [ -f /etc/redhat-release ]; then
-        yum install -y docker-compose-plugin
-    fi
+    mkdir -p /usr/libexec/docker/cli-plugins
+    curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/libexec/docker/cli-plugins/docker-compose
+    chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+    
+    # Fallback for some systems
+    mkdir -p ~/.docker/cli-plugins
+    cp /usr/libexec/docker/cli-plugins/docker-compose ~/.docker/cli-plugins/docker-compose
 fi
 
 # --- 3. Step 2: Nginx Reverse Proxy ---
@@ -184,6 +186,7 @@ services:
     image: ghcr.io/logicdock/logicpanel:latest
     container_name: logicpanel_app
     restart: always
+    ports:
       - "${MASTER_PORT:-999}:${MASTER_PORT:-999}"
       - "${USER_PORT:-777}:${USER_PORT:-777}"
     environment:
