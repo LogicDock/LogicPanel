@@ -237,25 +237,24 @@ log_info "Pulling and starting containers..."
 docker compose pull
 docker compose up -d
 
+# Finalize configuration (waiting 20s for DB)
 log_info "Finalizing configuration (waiting 20s for DB)..."
 sleep 20
 
-	# Download and Inject Setup Scripts (ensures installer works even if image is stale)
-	curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create_admin.php" -o create_admin.php
-	
-	mkdir -p database
-	curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/database/schema.sql" -o database/schema.sql
-	
-	docker exec logicpanel_app mkdir -p /var/www/html/database
-	docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
-	docker cp database/schema.sql logicpanel_app:/var/www/html/database/schema.sql
-	
-	rm create_admin.php
-	rm -rf database
+# Download and Inject Setup Scripts (ensures installer works even if image is stale)
+curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create_admin.php" -o create_admin.php
+mkdir -p database && curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/database/schema.sql" -o database/schema.sql
+
+docker exec logicpanel_app mkdir -p /var/www/html/database
+docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
+docker cp database/schema.sql logicpanel_app:/var/www/html/database/schema.sql
+
+rm -f create_admin.php
+rm -rf database
 
 # Execute Admin Creation
-docker exec logicpanel_app php create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"
-docker exec logicpanel_app rm /var/www/html/create_admin.php
+docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"
+docker exec logicpanel_app rm -f /var/www/html/create_admin.php
 
 log_success "LogicPanel is now LIVE!"
 echo -e "\n${GREEN}============================================================${NC}"

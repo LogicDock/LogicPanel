@@ -33,15 +33,33 @@ try {
     // Ensure users table exists
     $stmt = $pdo->query("SHOW TABLES LIKE 'users'");
     if (!$stmt->fetch()) {
-        $schemaPath = __DIR__ . '/database/schema.sql';
-        if (file_exists($schemaPath)) {
+        // Search for schema in common locations
+        $possiblePaths = [
+            __DIR__ . '/database/schema.sql',
+            '/var/www/html/database/schema.sql',
+            __DIR__ . '/schema.sql'
+        ];
+
+        $schemaPath = null;
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path)) {
+                $schemaPath = $path;
+                break;
+            }
+        }
+
+        if ($schemaPath) {
             $schema = file_get_contents($schemaPath);
             if ($schema) {
                 $pdo->exec($schema);
-                echo "Database schema imported.\n";
+                echo "Database schema imported from $schemaPath.\n";
             }
         } else {
-            throw new Exception("Schema file not found at $schemaPath");
+            // Debug info
+            $dir = __DIR__;
+            $dbDir = $dir . '/database';
+            $files = file_exists($dbDir) ? implode(', ', scandir($dbDir)) : 'dir missing';
+            throw new Exception("Schema file not found. Checked: " . implode(', ', $possiblePaths) . ". DB Dir files: $files");
         }
     }
 
