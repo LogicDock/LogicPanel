@@ -22,7 +22,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     }
 }
 $tempEffectivePort = (int) ($tempHostPort ?: ($tempFwPort ?: $tempServerPort));
-$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 967);
+$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 999);
 
 // Isolate sessions by changing the session name before start
 if ($tempEffectivePort === $masterPort || getenv('APP_MODE') === 'master') {

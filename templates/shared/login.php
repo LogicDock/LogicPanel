@@ -6,97 +6,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - LogicPanel</title>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body {
             font-family: 'Open Sans', sans-serif;
-            background: #F2F2F2;
+            background-color: #f7f7f7;
             height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             margin: 0;
+            color: #333;
         }
 
-        .login-container {
+        .login-card {
+            background: #ffffff;
             width: 100%;
-            max-width: 400px;
-            padding: 20px;
+            max-width: 360px;
+            padding: 40px 30px;
             text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            border: 1px solid #e5e5e5;
         }
 
         .logo {
-            margin-bottom: 40px;
-            font-size: 32px;
+            margin-bottom: 30px;
+            font-size: 24px;
             font-weight: 700;
-            color: #FF6C2C;
+            color: #333;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: left;
         }
 
         label {
             display: block;
             margin-bottom: 8px;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
             color: #555;
         }
 
-        .input-wrapper {
-            background: #fff;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .input-wrapper:focus-within {
-            border-color: #66afe9;
-            box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(102, 175, 233, 0.6);
-        }
-
-        .input-wrapper svg {
-            width: 16px;
-            height: 16px;
-            color: #888;
-        }
-
         input {
-            border: none;
             width: 100%;
+            padding: 10px;
+            border: 1px solid #e1e1e1;
+            border-radius: 3px;
             font-size: 14px;
+            box-sizing: border-box;
+            background: #fdfdfd;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
             outline: none;
+            border-color: #4CAF50;
+            background: #fff;
         }
 
         button {
             width: 100%;
-            padding: 10px;
-            background: #0087C1;
+            padding: 12px;
+            /* Dynamic Button Color: Red for Master, Green for User */
+            background-color:
+                <?= isset($is_master_login) && $is_master_login ? '#d9534f' : '#3C873A' ?>
+            ;
             color: white;
             border: none;
-            border-radius: 3px;
+            border-radius: 4px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 20px;
+            transition: background 0.2s;
         }
 
         button:hover {
-            background: #00608a;
+            background-color:
+                <?= isset($is_master_login) && $is_master_login ? '#c9302c' : '#327530' ?>
+            ;
         }
 
-        .reset-pass {
-            margin-top: 15px;
-            font-size: 13px;
-            color: #333;
-            font-weight: 600;
-            display: block;
-            text-decoration: none;
+        .footer {
+            margin-top: 25px;
+            font-size: 12px;
+            color: #999;
         }
 
         .error-message {
@@ -105,14 +102,19 @@
             padding: 10px;
             border-radius: 3px;
             margin-bottom: 20px;
-            font-size: 14px;
+            font-size: 13px;
+        }
+
+        /* Placeholder style */
+        ::placeholder {
+            color: #aaa;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="login-container">
+    <div class="login-card">
         <div class="logo">LogicPanel</div>
 
         <?php if (isset($error) && $error): ?>
@@ -124,29 +126,22 @@
         <form action="<?= $base_url ?? '' ?>/login" method="POST">
             <div class="form-group">
                 <label>Username</label>
-                <div class="input-wrapper">
-                    <i data-lucide="user"></i>
-                    <input type="text" name="username" placeholder="username" required>
-                </div>
+                <input type="text" name="username" placeholder="Enter username" required>
             </div>
 
             <div class="form-group">
                 <label>Password</label>
-                <div class="input-wrapper">
-                    <i data-lucide="lock"></i>
-                    <input type="password" name="password" placeholder="Enter your password" required>
-                </div>
+                <input type="password" name="password" placeholder="Enter password" required>
             </div>
 
-            <button type="submit">Log in</button>
+            <button type="submit">Sign In</button>
         </form>
 
-        <a href="#" class="reset-pass">Reset Password</a>
+        <div class="footer">
+            &copy; <?= date('Y') ?> LogicPanel. All rights reserved.
+        </div>
     </div>
 
-    <script>
-        lucide.createIcons();
-    </script>
 </body>
 
 </html>
