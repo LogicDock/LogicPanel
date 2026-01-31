@@ -1,0 +1,40 @@
+LogicPanel Proprietary License
+Copyright (c) 2024-2026 LogicDock
+
+All rights reserved.
+
+1. GRANT OF LICENSE
+   LogicDock grants you a non-exclusive, non-transferable license to:
+   - Use LogicPanel for personal or commercial hosting purposes
+   - Install LogicPanel on unlimited servers you own or manage
+   - Receive updates and bug fixes at no additional cost
+
+2. RESTRICTIONS
+   You may NOT:
+   - Modify, adapt, or create derivative works of the source code
+   - Redistribute, sell, lease, or sublicense the software
+   - Remove or alter any proprietary notices or labels
+   - Use the software to create competing products
+   - Reverse engineer, decompile, or disassemble the software
+
+3. OWNERSHIP
+   LogicDock retains all rights, title, and interest in LogicPanel.
+   This license does not grant you any ownership rights.
+
+4. TERMINATION
+   This license terminates automatically if you violate any terms.
+   Upon termination, you must destroy all copies of the software.
+
+5. WARRANTY DISCLAIMER
+   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+   LOGICDOCK DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL LOGICDOCK BE LIABLE FOR ANY INDIRECT,
+   INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES.
+
+7. SUPPORT
+   Free community support is available via GitHub Issues.
+   Priority support available at https://logicdock.cloud/support
+
+For licensing inquiries: license@logicdock.cloud
