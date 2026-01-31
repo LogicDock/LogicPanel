@@ -65,18 +65,6 @@ ob_start();
                     <span style="color:#f59e0b;">⚠️ Changing domains will restart the application.</span>
                 </small>
             </div>
-
-            <div id="sharedDomainSection" class="subdomain-section" style="display:none;">
-                <label style="display:block; font-size:12px; font-weight:600; color:#3C873A; margin-bottom:5px;">Quick
-                    Subdomain</label>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="subdomainPrefix" class="domain-input" placeholder="mysub" style="flex:1;">
-                    <span style="font-size:13px; font-weight:500; color:#888;">.<span
-                            id="baseDomainLabel"></span></span>
-                </div>
-                <button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;"
-                    onclick="applySubdomain()">Add Subdomain</button>
-            </div>
         </div>
         <div class="domain-modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('domainModal')">Cancel</button>
