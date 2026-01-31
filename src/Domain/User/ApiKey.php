@@ -10,6 +10,9 @@ class ApiKey extends Model
 {
     protected $table = 'api_keys';
 
+    // Database only has created_at, no updated_at column
+    const UPDATED_AT = null;
+
     protected $fillable = [
         'user_id',
         'name',
@@ -20,7 +23,6 @@ class ApiKey extends Model
 
     protected $casts = [
         'created_at' => 'datetime',
-        'updated_at' => 'datetime',
         'last_used_at' => 'datetime',
         'permissions' => 'array',
     ];
