@@ -56,7 +56,8 @@ ob_start();
             </div>
 
             <div style="margin-bottom:15px;">
-                <label for="domainInput" style="display:block; margin-bottom:5px; font-weight:500;">Domains (Comma Separated)</label>
+                <label for="domainInput" style="display:block; margin-bottom:5px; font-weight:500;">Domains (Comma
+                    Separated)</label>
                 <textarea id="domainInput" class="domain-input" rows="4"
                     placeholder="example.com, www.example.com"></textarea>
                 <small style="display:block; margin-top:8px; color:#888;">
@@ -66,12 +67,15 @@ ob_start();
             </div>
 
             <div id="sharedDomainSection" class="subdomain-section" style="display:none;">
-                <label style="display:block; font-size:12px; font-weight:600; color:#3C873A; margin-bottom:5px;">Quick Subdomain</label>
+                <label style="display:block; font-size:12px; font-weight:600; color:#3C873A; margin-bottom:5px;">Quick
+                    Subdomain</label>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <input type="text" id="subdomainPrefix" class="domain-input" placeholder="mysub" style="flex:1;">
-                    <span style="font-size:13px; font-weight:500; color:#888;">.<span id="baseDomainLabel"></span></span>
+                    <span style="font-size:13px; font-weight:500; color:#888;">.<span
+                            id="baseDomainLabel"></span></span>
                 </div>
-                <button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="applySubdomain()">Add Subdomain</button>
+                <button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;"
+                    onclick="applySubdomain()">Add Subdomain</button>
             </div>
         </div>
         <div class="domain-modal-footer">
@@ -95,11 +99,11 @@ ob_start();
         justify-content: center;
         z-index: 99999;
     }
-    
+
     .domain-modal-overlay.active {
         display: flex !important;
     }
-    
+
     .domain-modal-box {
         background: #ffffff;
         width: 500px;
@@ -108,12 +112,12 @@ ob_start();
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
         overflow: hidden;
     }
-    
+
     [data-theme="dark"] .domain-modal-box {
         background: #1a1a2e;
         border: 1px solid #333;
     }
-    
+
     .domain-modal-header {
         padding: 16px 20px;
         display: flex;
@@ -122,13 +126,13 @@ ob_start();
         background: #f5f5f5;
         border-bottom: 1px solid #ddd;
     }
-    
+
     [data-theme="dark"] .domain-modal-header {
         background: #252540;
         border-bottom-color: #333;
         color: #fff;
     }
-    
+
     .domain-modal-close {
         background: none;
         border: none;
@@ -137,26 +141,26 @@ ob_start();
         color: #666;
         border-radius: 4px;
     }
-    
+
     .domain-modal-close:hover {
-        background: rgba(0,0,0,0.1);
+        background: rgba(0, 0, 0, 0.1);
     }
-    
+
     [data-theme="dark"] .domain-modal-close {
         color: #aaa;
     }
-    
+
     .domain-modal-body {
         padding: 20px;
         background: #fff;
         color: #333;
     }
-    
+
     [data-theme="dark"] .domain-modal-body {
         background: #1a1a2e;
         color: #eee;
     }
-    
+
     .domain-modal-footer {
         padding: 15px 20px;
         background: #f5f5f5;
@@ -165,12 +169,12 @@ ob_start();
         justify-content: flex-end;
         gap: 10px;
     }
-    
+
     [data-theme="dark"] .domain-modal-footer {
         background: #252540;
         border-top-color: #333;
     }
-    
+
     .domain-input {
         width: 100%;
         padding: 10px 12px;
@@ -181,13 +185,13 @@ ob_start();
         color: #333;
         box-sizing: border-box;
     }
-    
+
     [data-theme="dark"] .domain-input {
         background: #252540;
         border-color: #444;
         color: #eee;
     }
-    
+
     .subdomain-section {
         margin-top: 15px;
         padding: 12px;
@@ -357,8 +361,8 @@ ob_start();
                 headers: { 'Authorization': `Bearer ${TOKEN}` }
             });
             const data = await res.json();
-            if (data.shared_domain) {
-                sharedDomain = data.shared_domain;
+            sharedDomain = data.shared_domain || data.hostname || 'cyberit.cloud';
+            if (sharedDomain) {
                 document.getElementById('baseDomainLabel').innerText = sharedDomain;
                 document.getElementById('sharedDomainSection').style.display = 'block';
             }
