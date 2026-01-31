@@ -247,46 +247,30 @@ fi
 # --- 4. Step 3: User Input ---
 log_info "Step 3: Panel Setup (Interactive)"
 
-# Handle interactive input support for piped execution (curl | bash)
-# If stdin is not a TTY, we must try to open /dev/tty
-if [ ! -t 0 ]; then
-    log_info "Running via pipe. Attaching to TTY for input..."
-    exec 3<&0 # Save original stdin (pipe) to fd 3
-    if [ -c /dev/tty ]; then
-        exec 0</dev/tty
-    else
-        log_error "Interactive terminal not available. Please run the script directly: ./install.sh"
-        exit 1
-    fi
-    REDIRECTED_INPUT=true
-else
-    REDIRECTED_INPUT=false
-fi
-
 echo ""
-# Use standard read -p which works in bash
-read -e -p "--- Enter Hostname (e.g., panel.example.cloud): " PANEL_DOMAIN
+# Use standard read -p with direct /dev/tty redirection
+read -p "--- Enter Hostname (e.g., panel.example.cloud): " PANEL_DOMAIN < /dev/tty
 while [[ -z "$PANEL_DOMAIN" ]]; do
-    read -e -p "--- ! Hostname required: " PANEL_DOMAIN
+    read -p "--- ! Hostname required: " PANEL_DOMAIN < /dev/tty
 done
 
 RANDOM_ADMIN="admin_$(generate_random 5)"
-read -e -p "--- Enter Admin Username (default: $RANDOM_ADMIN): " ADMIN_USER
+read -p "--- Enter Admin Username (default: $RANDOM_ADMIN): " ADMIN_USER < /dev/tty
 ADMIN_USER=${ADMIN_USER:-$RANDOM_ADMIN}
 
-read -e -p "--- Enter Admin Email: " ADMIN_EMAIL
+read -p "--- Enter Admin Email: " ADMIN_EMAIL < /dev/tty
 while [[ -z "$ADMIN_EMAIL" ]]; do
-    read -e -p "--- ! Email required: " ADMIN_EMAIL
+    read -p "--- ! Email required: " ADMIN_EMAIL < /dev/tty
 done
 
 while true; do
-    read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS
+    read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS < /dev/tty
     echo ""
     if [[ ${#ADMIN_PASS} -lt 8 ]]; then
         echo -e "${RED}--- ! Password too short. Min 8 characters.${NC}"
         continue
     fi
-    read -s -p "--- Enter Admin Password Again: " ADMIN_PASS_CONFIRM
+    read -s -p "--- Enter Admin Password Again: " ADMIN_PASS_CONFIRM < /dev/tty
     echo ""
     if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ]]; then
         break
@@ -294,12 +278,6 @@ while true; do
         echo -e "${RED}--- ! Passwords do not match. Try again.${NC}"
     fi
 done
-
-# Restore stdin if we redirected it
-if [ "$REDIRECTED_INPUT" = true ]; then
-    exec 0<&3
-    exec 3<&-
-fi
 
 # Random Secrets for Security
 DB_NAME="lp_db_$(generate_random 8)"
