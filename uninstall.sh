@@ -35,10 +35,6 @@ echo "║               LOGICPANEL UNINSTALLER v2.0                     ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# Redirect stdin from tty to allow interactive input when piped
-exec 3<&0
-exec < /dev/tty
-
 echo -e "${RED}!!! WARNING: THIS WILL PERMANENTLY DELETE ALL DATA !!!${NC}"
 echo ""
 echo "This will remove:"
@@ -47,10 +43,17 @@ echo "  • All user application containers"
 echo "  • All databases and data"
 echo "  • All configuration files"
 echo ""
-read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
+
+# Handle stdin properly when piped
+if [ -t 0 ]; then
+    read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
+else
+    exec < /dev/tty
+    read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
+fi
+
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Uninstall cancelled."
-    exec <&3 # Restore for cleanup
     exit 0
 fi
 
@@ -104,7 +107,7 @@ log_info "Cleaning up Docker networks..."
 docker network rm logicpanel_internal 2>/dev/null || true
 
 # --- 5. Clean up Docker ---
-read -p "Do you want to remove unused Docker images and volumes? (y/N): " CLEANUP_CONFIRM
+read -p "Do you want to remove unused Docker images and volumes? (y/N): " CLEANUP_CONFIRM </dev/tty
 if [[ "$CLEANUP_CONFIRM" =~ ^[Yy]$ ]]; then
     log_info "Cleaning Docker system..."
     docker system prune -f 2>/dev/null || true
@@ -113,11 +116,7 @@ if [[ "$CLEANUP_CONFIRM" =~ ^[Yy]$ ]]; then
 fi
 
 # --- 6. Optional Proxy Removal ---
-read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM
-
-# Restore original stdin
-exec <&3
-exec 3<&-
+read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM </dev/tty
 
 if [[ "$PROXY_CONFIRM" =~ ^[Yy]$ ]]; then
     if [ -d "$NGINX_PROXY_DIR" ]; then
