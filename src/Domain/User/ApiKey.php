@@ -10,8 +10,8 @@ class ApiKey extends Model
 {
     protected $table = 'api_keys';
 
-    // Database only has created_at, no updated_at column
-    const UPDATED_AT = null;
+    // Disable Eloquent timestamps - DB handles created_at with default
+    public $timestamps = false;
 
     protected $fillable = [
         'user_id',
