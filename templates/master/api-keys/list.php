@@ -95,7 +95,7 @@ ob_start();
             if (data.keys && data.keys.length > 0) {
                 data.keys.forEach(k => {
                     // Mask key: lp_............1234
-                    const shortKey = k.p_key.substring(0, 5) + '................' + k.p_key.substring(k.p_key.length - 4);
+                    const shortKey = k.key_hash.substring(0, 5) + '................' + k.key_hash.substring(k.key_hash.length - 4);
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -158,7 +158,7 @@ ob_start();
                 // Show key
                 document.getElementById('createKeyForm').style.display = 'none';
                 document.getElementById('newKeyDisplay').style.display = 'block';
-                document.getElementById('generatedKey').value = result.api_key.p_key;
+                document.getElementById('generatedKey').value = result.api_key.key_hash;
             } else {
                 showNotification(result.error || 'Failed', 'error');
             }
