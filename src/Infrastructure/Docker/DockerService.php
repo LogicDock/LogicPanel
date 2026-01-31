@@ -87,8 +87,7 @@ class DockerService
             $memoryLimit,
             '--restart',
             'unless-stopped',
-            '--storage-opt',
-            "size={$diskLimit}",
+            // NOTE: --storage-opt removed - requires XFS with pquota mount which most servers don't have
             // Nginx Proxy Environment Variables
             "-e",
             "VIRTUAL_HOST={$domain}",

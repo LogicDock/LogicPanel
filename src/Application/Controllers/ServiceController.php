@@ -85,7 +85,7 @@ class ServiceController
             $type = $data['runtime'] ?? $data['type'] ?? 'nodejs';
 
             // Load settings from settings.json
-            $configFile = __DIR__ . '/../../../../config/settings.json';
+            $configFile = __DIR__ . '/../../../config/settings.json';
             $settings = [];
             if (file_exists($configFile)) {
                 $settings = json_decode(file_get_contents($configFile), true) ?? [];
@@ -238,6 +238,12 @@ class ServiceController
 
             // Give container a few seconds to initialize and check if it's still running
             sleep(5);
+
+            // If SSL is enabled, wait extra time for Let's Encrypt to issue certificate
+            if (!empty($settings['enable_ssl'])) {
+                sleep(12); // Additional wait for SSL certificate issuance
+            }
+
             $isRunning = $this->dockerService->isContainerRunning($containerInfo['container_id']);
 
             if (!$isRunning) {

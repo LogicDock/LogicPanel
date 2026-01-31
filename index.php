@@ -161,6 +161,16 @@ if (!$isApi && $path !== 'login' && strpos($path, 'login') === false) {
             $cleanUrl = strtok($_SERVER["REQUEST_URI"], '?');
             header("Location: $cleanUrl");
             exit;
+        } else {
+            // Token is invalid or expired - if no existing session, force re-login
+            if (!isset($_SESSION['lp_session_token'])) {
+                header('Location: ' . $base_url . '/login?error=token_expired');
+                exit;
+            }
+            // If session exists, silently redirect to clean URL (existing session is valid)
+            $cleanUrl = strtok($_SERVER["REQUEST_URI"], '?');
+            header("Location: $cleanUrl");
+            exit;
         }
     }
 

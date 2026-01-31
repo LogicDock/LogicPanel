@@ -1,28 +1,50 @@
 <?php
 /**
- * LogicPanel Adminer Integration
- * 
- * We now use 'lp_session_token' for LogicPanel authentication to avoid
- * conflict with Adminer's 'token' which must be an integer (PHP 8.2+).
+ * LogicPanel Adminer Integration - Sessionless Auth
  */
 
-session_start();
+require_once __DIR__ . '/../vendor/autoload.php';
 
-// 1. Verify LogicPanel Access using our unique session key
-$is_authenticated = isset($_SESSION['lp_session_token']) && is_string($_SESSION['lp_session_token']);
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
+try {
+	$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+	$dotenv->load();
+} catch (\Exception $e) {
+}
+
+$jwtSecret = $_ENV['JWT_SECRET'] ?? 'your-super-secret-key-change-in-production';
+$authToken = $_GET['auth'] ?? $_COOKIE['lp_adminer_auth'] ?? null;
+$is_authenticated = false;
+
+if ($authToken) {
+	try {
+		JWT::decode($authToken, new Key($jwtSecret, 'HS256'));
+		$is_authenticated = true;
+
+		if (!isset($_COOKIE['lp_adminer_auth'])) {
+			setcookie('lp_adminer_auth', $authToken, [
+				'expires' => time() + 3600,
+				'path' => '/public/',
+				'httponly' => true,
+				'samesite' => 'Lax'
+			]);
+		}
+	} catch (\Exception $e) {
+	}
+}
 
 if (!$is_authenticated) {
-	header('Location: /login');
+	header('Location: /login?error=adminer_auth');
 	exit;
 }
 
-// 2. Clear Adminer's token if it's in a bad state (string instead of int)
-// This prevents the "int ^ string" TypeError in PHP 8.2+
+session_name('ADMINER_SESSION');
+@session_start();
+
 if (isset($_SESSION['token']) && !is_int($_SESSION['token'])) {
 	unset($_SESSION['token']);
 }
 
-// 3. Load Adminer Core
-// Adminer will use the default 'PHPSESSID' session but its 'token' key
-// will no longer collide with LogicPanel's authentication token.
 include __DIR__ . '/adminer_core.php';
