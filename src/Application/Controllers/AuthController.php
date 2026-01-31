@@ -32,11 +32,48 @@ class AuthController
 
         $user = User::where('username', $username)->first();
 
-        if (!$user || !$user->verifyPassword($password)) {
+        if (!$user) {
             return $this->jsonResponse($response, [
                 'error' => 'Invalid credentials'
             ], 401);
         }
+
+        // Check if account is locked
+        if ($user->locked_until && strtotime($user->locked_until) > time()) {
+            $remainingMinutes = ceil((strtotime($user->locked_until) - time()) / 60);
+            return $this->jsonResponse($response, [
+                'error' => "Account locked due to too many failed attempts. Try again in {$remainingMinutes} minutes.",
+                'locked_until' => $user->locked_until
+            ], 403);
+        }
+
+        if (!$user->verifyPassword($password)) {
+            // Increment failed attempts
+            $failedAttempts = ($user->failed_login_attempts ?? 0) + 1;
+            $user->failed_login_attempts = $failedAttempts;
+
+            // Lock account after 5 failed attempts for 30 minutes
+            if ($failedAttempts >= 5) {
+                $user->locked_until = date('Y-m-d H:i:s', time() + 1800); // 30 minutes
+                $user->save();
+
+                return $this->jsonResponse($response, [
+                    'error' => 'Account locked due to too many failed attempts. Try again in 30 minutes.'
+                ], 403);
+            }
+
+            $user->save();
+
+            $attemptsRemaining = 5 - $failedAttempts;
+            return $this->jsonResponse($response, [
+                'error' => "Invalid credentials. {$attemptsRemaining} attempts remaining."
+            ], 401);
+        }
+
+        // Reset failed attempts on successful login
+        $user->failed_login_attempts = 0;
+        $user->locked_until = null;
+        $user->save();
 
         if (!$user->isActive()) {
             return $this->jsonResponse($response, [
@@ -71,6 +108,12 @@ class AuthController
             return $this->jsonResponse($response, [
                 'error' => 'Username, email, and password are required'
             ], 400);
+        }
+
+        // Password complexity validation
+        $passwordError = $this->validatePasswordComplexity($password);
+        if ($passwordError) {
+            return $this->jsonResponse($response, ['error' => $passwordError], 400);
         }
 
         // Check if user exists
@@ -245,6 +288,35 @@ class AuthController
                 'role' => $user->role,
             ]
         ]);
+    }
+
+    /**
+     * Validate password complexity requirements
+     * Returns error message if invalid, null if valid
+     */
+    private function validatePasswordComplexity(string $password): ?string
+    {
+        if (strlen($password) < 8) {
+            return 'Password must be at least 8 characters';
+        }
+
+        if (!preg_match('/[A-Z]/', $password)) {
+            return 'Password must contain at least one uppercase letter';
+        }
+
+        if (!preg_match('/[a-z]/', $password)) {
+            return 'Password must contain at least one lowercase letter';
+        }
+
+        if (!preg_match('/[0-9]/', $password)) {
+            return 'Password must contain at least one number';
+        }
+
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            return 'Password must contain at least one special character';
+        }
+
+        return null;
     }
 
     private function jsonResponse(ResponseInterface $response, array $data, int $status = 200): ResponseInterface
