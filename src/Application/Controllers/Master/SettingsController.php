@@ -197,17 +197,18 @@ class SettingsController
         $secret = $_ENV['JWT_SECRET'] ?? 'secret';
         $token = JWT::encode($payload, $secret, 'HS256');
 
-        // Build dynamic gateway URL using gateway.hostname subdomain
+        // Build gateway URL - uses Apache proxy at /ws/terminal path
         $settings = $this->loadSettings();
         $hostname = $settings['hostname'] ?? $_ENV['APP_DOMAIN'] ?? 'localhost';
+        $masterPort = $settings['master_port'] ?? $_ENV['MASTER_PORT'] ?? '999';
 
-        // For localhost, use ws:// with port. For production, use gateway.hostname with wss://
+        // For localhost, use ws:// with gateway port. For production, use wss:// through Apache proxy
         if (in_array($hostname, ['localhost', '127.0.0.1'])) {
             $gatewayPort = $_ENV['GATEWAY_PORT'] ?? '3002';
             $gatewayUrl = "ws://{$hostname}:{$gatewayPort}";
         } else {
-            // Use gateway subdomain with SSL (handled by nginx-proxy)
-            $gatewayUrl = "wss://gateway.{$hostname}";
+            // Use /ws/terminal path through Apache proxy - no extra DNS needed!
+            $gatewayUrl = "wss://{$hostname}:{$masterPort}/ws/terminal";
         }
 
         return $this->jsonResponse($response, [
