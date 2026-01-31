@@ -175,8 +175,8 @@ ob_start();
         link.style.pointerEvents = 'none';
 
         try {
-            const res = await fetch(`${API_BASE}/master/settings/detect-ip`, {
-                headers: { 'Authorization': `Bearer ${TOKEN}` }
+            const res = await fetch('/public/api/master/settings/detect-ip', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
             if (data.success) {
