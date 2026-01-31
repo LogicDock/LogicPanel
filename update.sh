@@ -93,7 +93,6 @@ PRESERVE=(
     "mysql_data_mother"
     "postgres_data"
     "mongo_data"
-    "docker-compose.yml"
     ".env"
 )
 

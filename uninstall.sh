@@ -45,12 +45,13 @@ echo "  • All configuration files"
 echo ""
 
 # Handle stdin properly when piped
-if [ -t 0 ]; then
-    read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
-else
-    exec < /dev/tty
-    read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
+exec 3<&0
+if [ -t 0 ]; then :; else
+    if [ -c /dev/tty ]; then exec 0</dev/tty; fi
 fi
+
+echo -n "Are you sure you want to uninstall LogicPanel? (y/N): "
+read CONFIRM
 
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Uninstall cancelled."
@@ -63,6 +64,7 @@ log_info "Stopping LogicPanel containers..."
 # List of LogicPanel containers
 CONTAINERS=(
     "logicpanel_app"
+    "logicpanel_socket_proxy"
     "logicpanel_gateway"
     "logicpanel_db"
     "logicpanel_redis"
@@ -107,7 +109,8 @@ log_info "Cleaning up Docker networks..."
 docker network rm logicpanel_internal 2>/dev/null || true
 
 # --- 5. Clean up Docker ---
-read -p "Do you want to remove unused Docker images and volumes? (y/N): " CLEANUP_CONFIRM </dev/tty
+echo -n "Do you want to remove unused Docker images and volumes? (y/N): "
+read CLEANUP_CONFIRM
 if [[ "$CLEANUP_CONFIRM" =~ ^[Yy]$ ]]; then
     log_info "Cleaning Docker system..."
     docker system prune -f 2>/dev/null || true
@@ -116,7 +119,8 @@ if [[ "$CLEANUP_CONFIRM" =~ ^[Yy]$ ]]; then
 fi
 
 # --- 6. Optional Proxy Removal ---
-read -p "Do you also want to remove the Nginx Proxy setup? (y/N): " PROXY_CONFIRM </dev/tty
+echo -n "Do you also want to remove the Nginx Proxy setup? (y/N): "
+read PROXY_CONFIRM
 
 if [[ "$PROXY_CONFIRM" =~ ^[Yy]$ ]]; then
     if [ -d "$NGINX_PROXY_DIR" ]; then

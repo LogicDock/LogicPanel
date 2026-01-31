@@ -247,33 +247,53 @@ fi
 # --- 4. Step 3: User Input ---
 log_info "Step 3: Panel Setup (Interactive)"
 
-# Redirect stdin from tty to allow interactive input when piped
+# Save stdin to file descriptor 3
 exec 3<&0
-exec < /dev/tty
+
+# Check if we are running in a terminal
+if [ -t 0 ]; then
+    # We are in a terminal, just read normally
+    :
+else
+    # We are piped, try to force read from tty
+    if [ -c /dev/tty ]; then
+        exec 0</dev/tty
+    else
+        log_error "Interactive terminal required but not available."
+        exit 1
+    fi
+fi
 
 echo ""
-read -p "--- Enter Hostname (e.g., panel.example.cloud): " PANEL_DOMAIN
+echo -n "--- Enter Hostname (e.g., panel.example.cloud): "
+read PANEL_DOMAIN
 while [[ -z "$PANEL_DOMAIN" ]]; do
-    read -p "--- ! Hostname required: " PANEL_DOMAIN
+    echo -n "--- ! Hostname required: "
+    read PANEL_DOMAIN
 done
 
 RANDOM_ADMIN="admin_$(generate_random 5)"
-read -p "--- Enter Admin Username (default: $RANDOM_ADMIN): " ADMIN_USER
+echo -n "--- Enter Admin Username (default: $RANDOM_ADMIN): "
+read ADMIN_USER
 ADMIN_USER=${ADMIN_USER:-$RANDOM_ADMIN}
 
-read -p "--- Enter Admin Email: " ADMIN_EMAIL
+echo -n "--- Enter Admin Email: "
+read ADMIN_EMAIL
 while [[ -z "$ADMIN_EMAIL" ]]; do
-    read -p "--- ! Email required: " ADMIN_EMAIL
+    echo -n "--- ! Email required: "
+    read ADMIN_EMAIL
 done
 
 while true; do
-    read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS
+    echo -n "--- Enter Admin Password (min 8 characters): "
+    read -s ADMIN_PASS
     echo ""
     if [[ ${#ADMIN_PASS} -lt 8 ]]; then
         echo -e "${RED}--- ! Password too short. Min 8 characters.${NC}"
         continue
     fi
-    read -s -p "--- Enter Admin Password Again: " ADMIN_PASS_CONFIRM
+    echo -n "--- Enter Admin Password Again: "
+    read -s ADMIN_PASS_CONFIRM
     echo ""
     if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ]]; then
         break
@@ -315,167 +335,6 @@ cd $INSTALL_DIR
 log_info "Fetching latest source code..."
 curl -sSL https://github.com/LogicDock/LogicPanel/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
 
-# --- 5. Docker Compose Configuration ---
-cat > docker-compose.yml << EOF
-version: '3.8'
-
-services:
-  # Docker Socket Proxy - Secure Docker API access
-  docker-proxy:
-    image: tecnativa/docker-socket-proxy:latest
-    container_name: logicpanel_docker_proxy
-    restart: always
-    privileged: true
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - CONTAINERS=1
-      - POST=1
-      - START=1
-      - STOP=1
-      - RESTART=1
-      - KILL=1
-      - EXEC=1
-      - IMAGES=1
-      - NETWORKS=1
-      - VOLUMES=1
-      - LOGS=1
-      - INFO=1
-      - VERSION=1
-      - SERVICES=0
-      - SWARM=0
-      - NODES=0
-      - SECRETS=0
-      - CONFIGS=0
-    networks:
-      - internal
-
-  app:
-    build: .
-    container_name: logicpanel_app
-    restart: always
-    ports:
-      - "\${MASTER_PORT:-999}:\${MASTER_PORT:-999}"
-      - "\${USER_PORT:-777}:\${USER_PORT:-777}"
-    environment:
-      VIRTUAL_HOST: ${PANEL_DOMAIN}
-      VIRTUAL_PORT: 80
-      LETSENCRYPT_HOST: ${PANEL_DOMAIN}
-      LETSENCRYPT_EMAIL: ${ADMIN_EMAIL}
-      DB_CONNECTION: mysql
-      DB_HOST: logicpanel_db
-      DB_PORT: 3306
-      DB_DATABASE: ${DB_NAME}
-      DB_USERNAME: ${DB_USER}
-      DB_PASSWORD: ${DB_PASS}
-      DB_PROVISIONER_SECRET: ${DB_PROVISIONER_SECRET}
-      MYSQL_CONTAINER: lp-mysql-mother
-      POSTGRES_CONTAINER: lp-postgres-mother
-      MONGO_CONTAINER: lp-mongo-mother
-      JWT_SECRET: ${JWT_SECRET}
-      ENCRYPTION_KEY: ${ENC_KEY}
-      APP_URL: https://${PANEL_DOMAIN}
-      APP_DOMAIN: ${PANEL_DOMAIN}
-      MASTER_PORT: 999
-      USER_PORT: 777
-      APP_ENV: production
-      DOCKER_HOST: tcp://docker-proxy:2375
-    volumes:
-      - ./storage:/var/www/html/storage
-      - certs:/etc/nginx/certs:ro
-    networks:
-      - nginx-proxy_web
-      - internal
-    depends_on:
-      - docker-proxy
-      - logicpanel_db
-      - mysql
-      - postgres
-      - mongo
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  terminal-gateway:
-    build: ./services/gateway
-    container_name: logicpanel_gateway
-    restart: always
-    environment:
-      JWT_SECRET: ${JWT_SECRET}
-      DOCKER_HOST: tcp://docker-proxy:2375
-    networks:
-      - nginx-proxy_web
-      - internal
-    depends_on:
-      - docker-proxy
-
-  logicpanel_db:
-    image: mariadb:10.11
-    container_name: logicpanel_db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${ROOT_PASS}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASS}
-    volumes:
-      - ./mysql_data_main:/var/lib/mysql
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mysql:
-    image: mariadb:11.2
-    container_name: lp-mysql-mother
-    restart: always
-    ports:
-      - "127.0.0.1:3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: ${ROOT_PASS}
-    volumes:
-      - ./mysql_data_mother:/var/lib/mysql
-    networks:
-      - internal
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: lp-postgres-mother
-    restart: always
-    ports:
-      - "127.0.0.1:5432:5432"
-    environment:
-      POSTGRES_PASSWORD: ${ROOT_PASS}
-    volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-    networks:
-      - internal
-
-  mongo:
-    image: mongo:7.0
-    container_name: lp-mongo-mother
-    restart: always
-    ports:
-      - "127.0.0.1:27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_PASSWORD: ${ROOT_PASS}
-      MONGO_INITDB_ROOT_USERNAME: root
-    volumes:
-      - ./mongo_data:/data/db
-    networks:
-      - internal
-
-  redis:
-    image: redis:7-alpine
-    container_name: logicpanel_redis
-    restart: always
-    networks:
       - internal
 
   db-provisioner:

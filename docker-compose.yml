@@ -93,9 +93,9 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=logicpanel-db
       - DB_PORT=3306
-      - DB_DATABASE=logicpanel
-      - DB_USERNAME=logicpanel
-      - DB_PASSWORD=logicpanel_password
+      - DB_DATABASE=${DB_NAME:-logicpanel}
+      - DB_USERNAME=${DB_USER:-logicpanel}
+      - DB_PASSWORD=${DB_PASSWORD:-logicpanel_password}
       - MYSQL_CONTAINER=lp-mysql-mother
       - POSTGRES_CONTAINER=lp-postgres-mother
       - MONGO_CONTAINER=lp-mongo-mother
@@ -104,11 +104,12 @@ services:
       - DOCKER_NETWORK=${DOCKER_NETWORK}
       - USER_APPS_PATH=/var/www/html/storage/user-apps
       - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-/opt/logicpanel/storage/user-apps}
-      - APP_DOMAIN=${APP_DOMAIN:-cyberit.cloud}
+      - APP_DOMAIN=${PANEL_DOMAIN:-cyberit.cloud}
       - JWT_SECRET=${JWT_SECRET}
       # Nginx Proxy Configuration
-      - VIRTUAL_HOST=panel.cyberit.cloud,localhost
-      - LETSENCRYPT_HOST=panel.cyberit.cloud
+      - VIRTUAL_HOST=${PANEL_DOMAIN:-panel.cyberit.cloud},localhost
+      - LETSENCRYPT_HOST=${PANEL_DOMAIN:-panel.cyberit.cloud}
+      - LETSENCRYPT_EMAIL=${ADMIN_EMAIL}
       - VIRTUAL_PORT=80
     volumes:
       - .:/var/www/html
@@ -146,9 +147,9 @@ services:
     container_name: logicpanel_db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: logicpanel
-      MYSQL_USER: logicpanel
-      MYSQL_PASSWORD: logicpanel_password
+      MYSQL_DATABASE: ${DB_NAME:-logicpanel}
+      MYSQL_USER: ${DB_USER:-logicpanel}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-logicpanel_password}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - logicpanel_db_maria_data:/var/lib/mysql
