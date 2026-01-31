@@ -38,54 +38,164 @@ ob_start();
 </div>
 
 <!-- Manage Domains Modal -->
-<div id="domainModal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-header">
-            <h3>Manage Domains</h3>
-            <button class="btn-icon" onclick="closeModal('domainModal')">
-                <i data-lucide="x"></i>
+<div id="domainModal" class="domain-modal-overlay">
+    <div class="domain-modal-box">
+        <div class="domain-modal-header">
+            <h3 style="margin:0; font-size:16px; font-weight:600;">Manage Domains</h3>
+            <button type="button" class="domain-modal-close" onclick="closeModal('domainModal')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
             </button>
         </div>
-        <div class="modal-body">
+        <div class="domain-modal-body">
             <div style="margin-bottom: 20px;">
-                <h4 id="modalAppName" style="margin:0 0 5px 0; color:var(--primary);">MyApp</h4>
-                <p style="font-size:12px; color:var(--text-secondary); margin:0;">Update the domains list below.</p>
+                <h4 id="modalAppName" style="margin:0 0 5px 0; color:#3C873A;">MyApp</h4>
+                <p style="font-size:12px; color:#999; margin:0;">Update the domains list below.</p>
             </div>
 
-            <div class="db-form-group">
-                <label for="domainInput">Domains (Comma Separated)</label>
-                <textarea id="domainInput" class="form-control" rows="4"
+            <div style="margin-bottom:15px;">
+                <label for="domainInput" style="display:block; margin-bottom:5px; font-weight:500;">Domains (Comma Separated)</label>
+                <textarea id="domainInput" class="domain-input" rows="4"
                     placeholder="example.com, www.example.com"></textarea>
-                <small style="display:block; margin-top:8px; color:var(--text-secondary);">
+                <small style="display:block; margin-top:8px; color:#888;">
                     Enter your custom domains separated by commas.<br>
-                    <span class="text-warning"><i data-lucide="alert-triangle"
-                            style="width:12px;height:12px;display:inline;"></i> Changing domains will restart the
-                        application.</span>
+                    <span style="color:#f59e0b;">⚠️ Changing domains will restart the application.</span>
                 </small>
             </div>
 
-            <div id="sharedDomainSection"
-                style="display:none; margin-top:15px; padding:12px; background:rgba(60, 135, 58, 0.05); border:1px dashed var(--primary); border-radius:4px;">
-                <label
-                    style="display:block; font-size:12px; font-weight:600; color:var(--primary); margin-bottom:5px;">Quick
-                    Subdomain</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="subdomainPrefix" class="form-control" placeholder="mysub" style="flex:1;">
-                    <div
-                        style="display:flex; align-items:center; font-size:13px; font-weight:500; color:var(--text-secondary);">
-                        .<span id="baseDomainLabel"></span>
-                    </div>
+            <div id="sharedDomainSection" class="subdomain-section" style="display:none;">
+                <label style="display:block; font-size:12px; font-weight:600; color:#3C873A; margin-bottom:5px;">Quick Subdomain</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="subdomainPrefix" class="domain-input" placeholder="mysub" style="flex:1;">
+                    <span style="font-size:13px; font-weight:500; color:#888;">.<span id="baseDomainLabel"></span></span>
                 </div>
-                <button class="btn btn-primary btn-sm mt-10" style="width:100%;" onclick="applySubdomain()">Add
-                    Subdomain</button>
+                <button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="applySubdomain()">Add Subdomain</button>
             </div>
         </div>
-        <div class="modal-footer">
+        <div class="domain-modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('domainModal')">Cancel</button>
             <button class="btn btn-primary" onclick="saveDomains()">Save Changes</button>
         </div>
     </div>
 </div>
+
+<style>
+    /* Domain Modal - Explicit Styles */
+    .domain-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    }
+    
+    .domain-modal-overlay.active {
+        display: flex !important;
+    }
+    
+    .domain-modal-box {
+        background: #ffffff;
+        width: 500px;
+        max-width: 90%;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        overflow: hidden;
+    }
+    
+    [data-theme="dark"] .domain-modal-box {
+        background: #1a1a2e;
+        border: 1px solid #333;
+    }
+    
+    .domain-modal-header {
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f5f5f5;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    [data-theme="dark"] .domain-modal-header {
+        background: #252540;
+        border-bottom-color: #333;
+        color: #fff;
+    }
+    
+    .domain-modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        color: #666;
+        border-radius: 4px;
+    }
+    
+    .domain-modal-close:hover {
+        background: rgba(0,0,0,0.1);
+    }
+    
+    [data-theme="dark"] .domain-modal-close {
+        color: #aaa;
+    }
+    
+    .domain-modal-body {
+        padding: 20px;
+        background: #fff;
+        color: #333;
+    }
+    
+    [data-theme="dark"] .domain-modal-body {
+        background: #1a1a2e;
+        color: #eee;
+    }
+    
+    .domain-modal-footer {
+        padding: 15px 20px;
+        background: #f5f5f5;
+        border-top: 1px solid #ddd;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    [data-theme="dark"] .domain-modal-footer {
+        background: #252540;
+        border-top-color: #333;
+    }
+    
+    .domain-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+        background: #fff;
+        color: #333;
+        box-sizing: border-box;
+    }
+    
+    [data-theme="dark"] .domain-input {
+        background: #252540;
+        border-color: #444;
+        color: #eee;
+    }
+    
+    .subdomain-section {
+        margin-top: 15px;
+        padding: 12px;
+        background: rgba(60, 135, 58, 0.1);
+        border: 1px dashed #3C873A;
+        border-radius: 6px;
+    }
+</style>
 
 <style>
     .db-container {
@@ -170,12 +280,18 @@ ob_start();
     }
 
     .modal {
-        background: var(--bg-card);
+        background: var(--bg-card, #ffffff);
         width: 500px;
         max-width: 90%;
         border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    [data-theme="dark"] .modal {
+        background: #1e1e2e;
+        border-color: #3a3a4a;
     }
 
     .modal-header {
@@ -254,11 +370,11 @@ ob_start();
     function applySubdomain() {
         const prefix = document.getElementById('subdomainPrefix').value.trim();
         if (!prefix) return;
-        
+
         const full = `${prefix}.${sharedDomain}`;
         const input = document.getElementById('domainInput');
         const current = input.value.trim();
-        
+
         if (current) {
             if (!current.includes(full)) {
                 input.value = current + ', ' + full;
@@ -266,7 +382,7 @@ ob_start();
         } else {
             input.value = full;
         }
-        
+
         document.getElementById('subdomainPrefix').value = '';
         showNotification('Subdomain added to list', 'success');
     }
