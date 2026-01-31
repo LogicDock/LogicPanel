@@ -202,6 +202,7 @@ class AuthController
         $public = [
             'company_name' => $settings['company_name'] ?? 'LogicPanel',
             'shared_domain' => $settings['shared_domain'] ?? '',
+            'hostname' => $settings['hostname'] ?? '',
         ];
 
         return $this->jsonResponse($response, $public);
