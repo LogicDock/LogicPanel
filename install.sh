@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# LogicPanel - One-Line Installer
+# LogicPanel - One-Line Installer v2.0
 # Author: LogicDock
 # Description: Automated, zero-hassle installer for LogicPanel with Docker, Nginx Proxy, and SSL.
+# Supports: Debian/Ubuntu (apt), RHEL/CentOS/Fedora (dnf/yum), Arch (pacman)
 # License: Proprietary
 
 set -e
@@ -10,6 +11,7 @@ set -e
 # --- Configuration ---
 INSTALL_DIR="/opt/logicpanel"
 NGINX_PROXY_DIR="/opt/nginx-proxy"
+VERSION="2.0.0"
 
 # Colors
 RED='\033[0;31m'
@@ -17,6 +19,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m'
 
 # Helpers
@@ -25,6 +28,31 @@ log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 generate_random() { cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w "$1" | head -n 1; }
+
+# Detect Package Manager
+detect_package_manager() {
+    if command -v apt-get &> /dev/null; then
+        PKG_MANAGER="apt"
+        PKG_UPDATE="apt-get update -qq"
+        PKG_INSTALL="apt-get install -y -qq"
+    elif command -v dnf &> /dev/null; then
+        PKG_MANAGER="dnf"
+        PKG_UPDATE="dnf check-update || true"
+        PKG_INSTALL="dnf install -y -q"
+    elif command -v yum &> /dev/null; then
+        PKG_MANAGER="yum"
+        PKG_UPDATE="yum check-update || true"
+        PKG_INSTALL="yum install -y -q"
+    elif command -v pacman &> /dev/null; then
+        PKG_MANAGER="pacman"
+        PKG_UPDATE="pacman -Sy --noconfirm"
+        PKG_INSTALL="pacman -S --noconfirm"
+    else
+        log_error "Unsupported package manager. Please install Docker manually."
+        exit 1
+    fi
+    log_success "Detected package manager: $PKG_MANAGER"
+}
 
 # Spinner for long-running tasks
 spinner() {
@@ -57,6 +85,31 @@ countdown_progress() {
     printf "\r  ${GREEN}[$(printf "%${width}s" | tr ' ' '█')]${NC} 100%% - ${message}            \n"
 }
 
+# Check port availability
+check_port() {
+    local port=$1
+    if ss -tuln | grep -q ":$port "; then
+        return 1
+    fi
+    return 0
+}
+
+# Wait for container to be healthy
+wait_for_container() {
+    local container=$1
+    local max_wait=${2:-60}
+    local waited=0
+    
+    while [ $waited -lt $max_wait ]; do
+        if docker inspect --format='{{.State.Running}}' "$container" 2>/dev/null | grep -q "true"; then
+            return 0
+        fi
+        sleep 2
+        waited=$((waited + 2))
+    done
+    return 1
+}
+
 # --- 1. Root Check ---
 if [[ $EUID -ne 0 ]]; then
    log_error "This script must be run as root. Try: sudo bash <(curl -sSL https://raw.githubusercontent.com/LogicDock/LogicPanel/main/install.sh)"
@@ -72,10 +125,21 @@ echo "██║     ██║   ██║██║   ██║██║██║
 echo "███████╗╚██████╔╝╚██████╔╝██║╚██████╗██║     ██║  ██║██║ ╚████║███████╗███████╗"
 echo "╚══════╝ ╚═════╝  ╚═════╝ ╚═╝ ╚═════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝"
 echo -e "${NC}"
-echo -e "--- ${YELLOW}LogicPanel Automated Installation${NC} ---\n"
+echo -e "--- ${YELLOW}LogicPanel Automated Installation v${VERSION}${NC} ---\n"
 
-# --- 2. Step 1: Dependencies ---
-log_info "Step 1: Preparing Docker Environment..."
+# --- 2. System Preparation ---
+log_info "Step 1: Preparing System Environment..."
+detect_package_manager
+
+# Check required ports
+REQUIRED_PORTS=(80 443 999 777 3306 5432 27017)
+for port in "${REQUIRED_PORTS[@]}"; do
+    if ! check_port $port; then
+        log_warn "Port $port is already in use. Installation may have conflicts."
+    fi
+done
+
+# Install Docker
 if command -v docker &> /dev/null; then
     log_success "Docker is already installed."
 else
@@ -85,30 +149,46 @@ else
     log_success "Docker installed."
 fi
 
+# Install Git and other dependencies
 if ! command -v git &> /dev/null; then
     log_info "Installing Git..."
-    if [ -f /etc/debian_version ]; then
-        apt-get update && apt-get install -y git
-    elif [ -f /etc/redhat-release ]; then
-        yum install -y git
-    fi
+    $PKG_INSTALL git
     log_success "Git installed."
 fi
 
-if ! docker compose version &> /dev/null; then
+# Install curl if missing (rare but possible)
+if ! command -v curl &> /dev/null; then
+    log_info "Installing curl..."
+    $PKG_INSTALL curl
+fi
+
+# Docker Compose Plugin
+if ! docker compose version &> /dev/null 2>&1; then
     log_info "Installing Docker Compose Plugin..."
     mkdir -p /usr/libexec/docker/cli-plugins
-    curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/libexec/docker/cli-plugins/docker-compose
+    COMPOSE_VERSION="v2.24.5"
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "aarch64" ]; then
+        ARCH="aarch64"
+    else
+        ARCH="x86_64"
+    fi
+    curl -SL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/libexec/docker/cli-plugins/docker-compose
     chmod +x /usr/libexec/docker/cli-plugins/docker-compose
     
     # Fallback for some systems
     mkdir -p ~/.docker/cli-plugins
     cp /usr/libexec/docker/cli-plugins/docker-compose ~/.docker/cli-plugins/docker-compose
+    log_success "Docker Compose installed."
 fi
 
 # --- 3. Step 2: Nginx Reverse Proxy ---
 log_info "Step 2: Configuring Reverse Proxy (Nginx + Let's Encrypt)..."
+
+# Create networks
 docker network inspect nginx-proxy_web &>/dev/null || docker network create nginx-proxy_web
+docker network inspect logicpanel_internal &>/dev/null || docker network create logicpanel_internal
+log_success "Docker networks configured."
 
 if docker ps -a --format '{{.Names}}' | grep -q "^nginx-proxy$"; then
     log_warn "Nginx Proxy is already active. Using existing one."
@@ -164,7 +244,7 @@ EOF
     log_success "Proxy deployed."
 fi
 
-# --- 4. Step 3: Interaction ---
+# --- 4. Step 3: User Input ---
 log_info "Step 3: Panel Setup (Interactive)"
 
 # Redirect stdin from tty to allow interactive input when piped
@@ -213,6 +293,7 @@ DB_PASS=$(generate_random 32)
 ROOT_PASS=$(generate_random 32)
 JWT_SECRET=$(generate_random 64)
 ENC_KEY=$(generate_random 32)
+DB_PROVISIONER_SECRET=$(generate_random 64)
 
 # Detect existing nginx-proxy certificate volume
 CERT_VOLUME="nginx-proxy_certs"
@@ -229,11 +310,11 @@ log_info "Step 4: Deploying LogicPanel Services..."
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
-# Fetch source code to avoid Git dependencies for builds
+# Fetch source code
 log_info "Fetching latest source code..."
 curl -sSL https://github.com/LogicDock/LogicPanel/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
 
-# --- 5. Step 4: Deployment ---
+# --- 5. Docker Compose Configuration ---
 cat > docker-compose.yml << EOF
 version: '3.8'
 
@@ -256,12 +337,14 @@ services:
       DB_DATABASE: ${DB_NAME}
       DB_USERNAME: ${DB_USER}
       DB_PASSWORD: ${DB_PASS}
+      DB_PROVISIONER_SECRET: ${DB_PROVISIONER_SECRET}
       MYSQL_CONTAINER: lp-mysql-mother
       POSTGRES_CONTAINER: lp-postgres-mother
       MONGO_CONTAINER: lp-mongo-mother
       JWT_SECRET: ${JWT_SECRET}
       ENCRYPTION_KEY: ${ENC_KEY}
       APP_URL: https://${PANEL_DOMAIN}
+      APP_DOMAIN: ${PANEL_DOMAIN}
       MASTER_PORT: 999
       USER_PORT: 777
       APP_ENV: production
@@ -278,19 +361,23 @@ services:
       - postgres
       - mongo
       - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   terminal-gateway:
     build: ./services/gateway
     container_name: logicpanel_gateway
     restart: always
-    ports:
-      - "3002:3002"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       JWT_SECRET: ${JWT_SECRET}
     networks:
       - nginx-proxy_web
+      - internal
 
   logicpanel_db:
     image: mariadb:10.11
@@ -305,6 +392,11 @@ services:
       - ./mysql_data_main:/var/lib/mysql
     networks:
       - internal
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mysql:
     image: mariadb:11.2
@@ -361,6 +453,7 @@ services:
     container_name: logicpanel_db_provisioner
     restart: always
     environment:
+      - DB_PROVISIONER_SECRET=${DB_PROVISIONER_SECRET}
       - MYSQL_ROOT_PASSWORD=${ROOT_PASS}
       - POSTGRES_ROOT_PASSWORD=${ROOT_PASS}
       - MONGO_ROOT_PASSWORD=${ROOT_PASS}
@@ -380,15 +473,32 @@ networks:
   nginx-proxy_web:
     external: true
   internal:
-    driver: bridge
+    name: logicpanel_internal
+    external: true
 
 EOF
 
-# Create storage layout (if not already fetched via tar)
+# Create storage layout
 mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views storage/user-apps
 chmod -R 777 storage
 
-# Build and start containers with beautiful progress
+# Create config directory and settings.json
+mkdir -p config
+cat > config/settings.json << EOF
+{
+    "hostname": "${PANEL_DOMAIN}",
+    "master_port": "999",
+    "user_port": "777",
+    "company_name": "LogicPanel",
+    "contact_email": "${ADMIN_EMAIL}",
+    "enable_ssl": "1",
+    "letsencrypt_email": "${ADMIN_EMAIL}",
+    "timezone": "UTC",
+    "allow_registration": "1"
+}
+EOF
+
+# Build and start containers
 echo ""
 log_info "Building LogicPanel (this may take 3-5 minutes)..."
 echo -e "  ${YELLOW}Build logs saved to: /tmp/logicpanel_build.log${NC}"
@@ -399,17 +509,35 @@ log_info "Starting Services..."
 docker compose up -d > /dev/null 2>&1 &
 spinner $! "Launching Docker Containers..."
 
-# 2-minute wait for services to fully initialize
+# Wait for services to initialize
 echo ""
 log_info "Waiting for services to initialize..."
-countdown_progress 120 "Services warming up"
+countdown_progress 90 "Services warming up"
 
-# Download and Inject Admin Setup Script (Now self-contained with embedded schema)
+# Verify containers are running
+log_info "Verifying container status..."
+REQUIRED_CONTAINERS=("logicpanel_app" "logicpanel_db" "logicpanel_gateway" "lp-mysql-mother" "lp-postgres-mother" "lp-mongo-mother" "logicpanel_redis")
+ALL_RUNNING=true
+
+for container in "${REQUIRED_CONTAINERS[@]}"; do
+    if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+        log_success "$container is running"
+    else
+        log_error "$container failed to start"
+        ALL_RUNNING=false
+    fi
+done
+
+if [ "$ALL_RUNNING" = false ]; then
+    log_error "Some containers failed to start. Check logs with: docker compose logs"
+    exit 1
+fi
+
+# Download and Inject Admin Setup Script
 curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create_admin.php" -o create_admin.php
-
 docker exec logicpanel_app mkdir -p /var/www/html/database
 docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
-
+docker cp config/settings.json logicpanel_app:/var/www/html/config/settings.json
 rm -f create_admin.php
 
 # Execute Admin Creation
@@ -417,6 +545,11 @@ log_info "Creating administrator account..."
 docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}" > /dev/null 2>&1
 docker exec logicpanel_app rm -f /var/www/html/create_admin.php
 
+# Final setup - ensure gateway is on both networks
+docker network connect nginx-proxy_web logicpanel_gateway 2>/dev/null || true
+docker network connect logicpanel_internal logicpanel_gateway 2>/dev/null || true
+
+# Success Message
 clear
 echo -e "${CYAN}"
 echo "██╗      ██████╗  ██████╗ ██╗ ██████╗██████╗  █████╗ ███╗   ██╗███████╗██╗     "
@@ -440,16 +573,30 @@ echo -e "${GREEN}║${NC}                                                       
 echo -e "${GREEN}║${NC}  ${YELLOW}🔐 ADMIN CREDENTIALS${NC}                                         ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}     Username:    ${CYAN}${ADMIN_USER}${NC}"
 echo -e "${GREEN}║${NC}     Email:       ${CYAN}${ADMIN_EMAIL}${NC}"
-echo -e "${GREEN}║${NC}     Password:    ${CYAN}${ADMIN_PASS}${NC}"
+echo -e "${GREEN}║${NC}     Password:    ${CYAN}(the password you entered)${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${YELLOW}📦 INSTALLED SERVICES${NC}                                        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • LogicPanel Application                                  ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • Terminal Gateway (WebSocket)                            ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • MariaDB (MySQL)    - Port 3306                          ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • PostgreSQL         - Port 5432                          ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • MongoDB            - Port 27017                         ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • Redis Cache                                             ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • Database Provisioner                                    ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
 echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  ${YELLOW}ℹ️  IMPORTANT NOTES${NC}                                          ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}     • First access may show SSL warning                        ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}       Click 'Advanced' > 'Proceed' to continue                 ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}     • Database secured with random credentials                 ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • SSL certificate will be auto-generated                  ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • First access may take 1-2 minutes for SSL               ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • Ensure DNS A record points to this server               ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${CYAN}Thank you for choosing LogicPanel by LogicDock.cloud${NC} 💙"
+echo ""
+echo -e "  ${MAGENTA}📚 Documentation: https://docs.logicdock.cloud${NC}"
+echo -e "  ${MAGENTA}🐛 Report Issues: https://github.com/LogicDock/LogicPanel/issues${NC}"
 echo ""
