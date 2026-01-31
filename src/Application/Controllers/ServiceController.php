@@ -269,6 +269,11 @@ class ServiceController
             $service->status = 'running';
             $service->save();
 
+            // Write .env file if env vars provided
+            if (!empty($envVars)) {
+                $this->writeEnvFile($service, $envVars);
+            }
+
             // SYNC TO DOMAINS TABLE
             try {
                 $domainList = explode(',', $service->domain);
