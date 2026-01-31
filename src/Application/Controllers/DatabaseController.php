@@ -41,7 +41,7 @@ class DatabaseController
                     'type' => $db->db_type,
                     'name' => $db->db_name,
                     'user' => $db->db_user,
-                    'password' => $db->db_password, // Exposing password for UI copy helpers
+                    'password' => $this->decryptPassword($db->db_password), // Decrypt before sending
                     'host' => $db->db_host,
                     'port' => $db->db_port,
                     'created_at' => $db->created_at->toIso8601String(),
@@ -196,11 +196,81 @@ class DatabaseController
         }
     }
 
+    /**
+     * Encrypt password using libsodium
+     * @throws \RuntimeException if encryption key is missing or invalid
+     */
     private function encryptPassword(string $password): string
     {
-        // Simple base64 encoding for now
-        // TODO: Implement proper encryption with libsodium
-        return base64_encode($password);
+        $key = $this->getEncryptionKey();
+
+        // Generate random nonce
+        $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+
+        // Encrypt the password
+        $ciphertext = sodium_crypto_secretbox($password, $nonce, $key);
+
+        // Clear the key from memory
+        sodium_memzero($key);
+
+        // Return nonce + ciphertext, base64 encoded for storage
+        return base64_encode($nonce . $ciphertext);
+    }
+
+    /**
+     * Decrypt password using libsodium
+     * @throws \RuntimeException if decryption fails
+     */
+    private function decryptPassword(string $encrypted): string
+    {
+        $key = $this->getEncryptionKey();
+        $decoded = base64_decode($encrypted);
+
+        if ($decoded === false || strlen($decoded) < SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
+            // Fallback for legacy base64-only passwords
+            sodium_memzero($key);
+            $legacy = base64_decode($encrypted);
+            return $legacy !== false ? $legacy : $encrypted;
+        }
+
+        // Extract nonce and ciphertext
+        $nonce = substr($decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $ciphertext = substr($decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+
+        // Decrypt
+        $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $key);
+
+        // Clear the key from memory
+        sodium_memzero($key);
+
+        if ($plaintext === false) {
+            // Fallback for legacy base64-only passwords
+            $legacy = base64_decode($encrypted);
+            return $legacy !== false ? $legacy : $encrypted;
+        }
+
+        return $plaintext;
+    }
+
+    /**
+     * Get the encryption key from environment
+     * @throws \RuntimeException if key is missing or invalid
+     */
+    private function getEncryptionKey(): string
+    {
+        $keyBase64 = $_ENV['ENCRYPTION_KEY'] ?? getenv('ENCRYPTION_KEY');
+
+        if (empty($keyBase64)) {
+            throw new \RuntimeException('ENCRYPTION_KEY environment variable not set');
+        }
+
+        $key = base64_decode($keyBase64);
+
+        if ($key === false || strlen($key) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
+            throw new \RuntimeException('Invalid ENCRYPTION_KEY: must be ' . SODIUM_CRYPTO_SECRETBOX_KEYBYTES . ' bytes, base64 encoded');
+        }
+
+        return $key;
     }
 
     private function jsonResponse(ResponseInterface $response, array $data, int $status = 200): ResponseInterface

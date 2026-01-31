@@ -33,13 +33,9 @@ class AuthMiddleware implements MiddlewareInterface
             $token = $matches[1];
         }
 
-        // Fallback: Check query parameter 'token' (for download/direct access)
-        if (empty($token)) {
-            $queryParams = $request->getQueryParams();
-            if (!empty($queryParams['token'])) {
-                $token = $queryParams['token'];
-            }
-        }
+        // SECURITY: Removed query parameter token support
+        // Tokens in URLs leak via browser history, server logs, and proxy logs
+        // Use Authorization: Bearer <token> header instead
 
         // --- NEW: API KEY SUPPORT ---
         // If no JWT, try API Key from header

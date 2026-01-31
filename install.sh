@@ -292,7 +292,8 @@ DB_USER="lp_user_$(generate_random 8)"
 DB_PASS=$(generate_random 32)
 ROOT_PASS=$(generate_random 32)
 JWT_SECRET=$(generate_random 64)
-ENC_KEY=$(generate_random 32)
+# Generate proper 32-byte key for libsodium, base64 encoded
+ENC_KEY=$(head -c 32 /dev/urandom | base64 -w 0)
 DB_PROVISIONER_SECRET=$(generate_random 64)
 
 # Detect existing nginx-proxy certificate volume
@@ -319,6 +320,36 @@ cat > docker-compose.yml << EOF
 version: '3.8'
 
 services:
+  # Docker Socket Proxy - Secure Docker API access
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: logicpanel_docker_proxy
+    restart: always
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - CONTAINERS=1
+      - POST=1
+      - START=1
+      - STOP=1
+      - RESTART=1
+      - KILL=1
+      - EXEC=1
+      - IMAGES=1
+      - NETWORKS=1
+      - VOLUMES=1
+      - LOGS=1
+      - INFO=1
+      - VERSION=1
+      - SERVICES=0
+      - SWARM=0
+      - NODES=0
+      - SECRETS=0
+      - CONFIGS=0
+    networks:
+      - internal
+
   app:
     build: .
     container_name: logicpanel_app
@@ -348,14 +379,15 @@ services:
       MASTER_PORT: 999
       USER_PORT: 777
       APP_ENV: production
+      DOCKER_HOST: tcp://docker-proxy:2375
     volumes:
       - ./storage:/var/www/html/storage
-      - /var/run/docker.sock:/var/run/docker.sock:rw
       - certs:/etc/nginx/certs:ro
     networks:
       - nginx-proxy_web
       - internal
     depends_on:
+      - docker-proxy
       - logicpanel_db
       - mysql
       - postgres
@@ -371,13 +403,14 @@ services:
     build: ./services/gateway
     container_name: logicpanel_gateway
     restart: always
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       JWT_SECRET: ${JWT_SECRET}
+      DOCKER_HOST: tcp://docker-proxy:2375
     networks:
       - nginx-proxy_web
       - internal
+    depends_on:
+      - docker-proxy
 
   logicpanel_db:
     image: mariadb:10.11
@@ -403,35 +436,33 @@ services:
     container_name: lp-mysql-mother
     restart: always
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${ROOT_PASS}
     volumes:
       - ./mysql_data_mother:/var/lib/mysql
     networks:
       - internal
-      - nginx-proxy_web
 
   postgres:
     image: postgres:16-alpine
     container_name: lp-postgres-mother
     restart: always
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_PASSWORD: ${ROOT_PASS}
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     networks:
       - internal
-      - nginx-proxy_web
 
   mongo:
     image: mongo:7.0
     container_name: lp-mongo-mother
     restart: always
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     environment:
       MONGO_INITDB_ROOT_PASSWORD: ${ROOT_PASS}
       MONGO_INITDB_ROOT_USERNAME: root
@@ -439,7 +470,6 @@ services:
       - ./mongo_data:/data/db
     networks:
       - internal
-      - nginx-proxy_web
 
   redis:
     image: redis:7-alpine
