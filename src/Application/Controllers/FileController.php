@@ -911,9 +911,21 @@ class FileController
         // Normalize slashes
         $path = str_replace('\\', '/', $path);
 
-        // Remove null bytes and traverse attempts
-        $path = str_replace(["\0", '../', '..\\'], '', $path);
+        // Remove null bytes
+        $path = str_replace("\0", '', $path);
+
+        // Explicitly block traversal attempts in the string itself for extra safety
+        if (strpos($path, '../') !== false || strpos($path, '..\\') !== false) {
+            // We return a path that will definitely fail isPathSafe/file check logic, 
+            // but we strip it just in case. 
+            // Ideally we should throw here, but following the pattern we'll just sanitize aggressively.
+            $path = str_replace(['../', '..\\'], '', $path);
+        }
+
         $path = ltrim($path, '/');
+
+        // Prevent empty path resulting in base directory access if not intended? 
+        // No, accessing root '/' is valid.
 
         $fullPath = $basePath . '/' . $path;
 
@@ -924,13 +936,21 @@ class FileController
     private function isPathSafe(string $basePath, string $fullPath): bool
     {
         $realBasePath = realpath($basePath);
+
+        // If the base path itself doesn't exist, nothing is safe
+        if ($realBasePath === false) {
+            return false;
+        }
+
         $realFullPath = realpath($fullPath);
 
         // Standardize slashes for Windows compatibility
-        if ($realBasePath)
-            $realBasePath = str_replace('\\', '/', $realBasePath);
-        if ($realFullPath)
+        $realBasePath = str_replace('\\', '/', $realBasePath);
+
+        if ($realFullPath) {
             $realFullPath = str_replace('\\', '/', $realFullPath);
+        }
+
 
         // If path doesn't exist yet (e.g. new file), allow if parent is safe
         if (!$realFullPath) {
@@ -939,14 +959,24 @@ class FileController
             $realParent = realpath($parent);
             if ($realParent) {
                 $realParent = str_replace('\\', '/', $realParent);
+                // Parent must be inside base path
                 return str_starts_with($realParent, $realBasePath);
             }
-            // If parent also doesn't exist, unsafe (unless recursive create, but let's be strict)
+            // If parent also doesn't exist, unsafe (unless recursive create, but we limit depth creation implicitly)
             return false;
         }
 
         // Ensure the path is within the base path
-        return $realBasePath && str_starts_with($realFullPath, $realBasePath);
+        // We append a trailing slash to base path to prevent partial matches 
+        // (e.g. /var/www/site vs /var/www/site_backup) unless it's exact match
+        if ($realBasePath === $realFullPath) {
+            return true;
+        }
+
+        // Ensure $realBasePath ends with slash for strict prefix check
+        $baseWithSlash = rtrim($realBasePath, '/') . '/';
+
+        return str_starts_with($realFullPath, $baseWithSlash);
     }
 
     private function jsonResponse(ResponseInterface $response, array $data, int $status = 200): ResponseInterface

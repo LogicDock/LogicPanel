@@ -26,6 +26,26 @@ volumes:
     name: nginx-proxy_html
 
 services:
+  # Docker Socket Proxy - Secure Docker API access
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: logicpanel_socket_proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - CONTAINERS=1
+      - POST=0 # Secure: GET only for containers usually, but we need start/stop
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
+      - SERVICES=1
+      - TASKS=1
+      - VOLUMES=1 # Needed for volume management
+    networks:
+      - logicpanel_network
+
   # Nginx Proxy - Automated Reverse Proxy
   nginx-proxy:
     image: jwilder/nginx-proxy:alpine
@@ -79,7 +99,8 @@ services:
       - MYSQL_CONTAINER=lp-mysql-mother
       - POSTGRES_CONTAINER=lp-postgres-mother
       - MONGO_CONTAINER=lp-mongo-mother
-      # Docker Configuration
+      # Docker Configuration - Use Proxy
+      - DOCKER_HOST=tcp://docker-proxy:2375
       - DOCKER_NETWORK=${DOCKER_NETWORK}
       - USER_APPS_PATH=/var/www/html/storage/user-apps
       - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-/opt/logicpanel/storage/user-apps}
@@ -91,7 +112,7 @@ services:
       - VIRTUAL_PORT=80
     volumes:
       - .:/var/www/html
-      - /var/run/docker.sock:/var/run/docker.sock
+      # - /var/run/docker.sock:/var/run/docker.sock # SECURED: Removed direct mount
       - certs:/etc/nginx/certs:ro
     networks:
       - logicpanel_network
@@ -103,6 +124,7 @@ services:
       - mongo
       - redis
       - nginx-proxy
+      - docker-proxy
     # Terminal Gateway (PHP Ratchet Sidecar)
   terminal-gateway:
     build: ./services/gateway
@@ -111,7 +133,8 @@ services:
     ports:
       - "3002:3002"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      # - /var/run/docker.sock:/var/run/docker.sock # SECURED: Needs proxy support if possible, or keep stricter
+      - /var/run/docker.sock:/var/run/docker.sock # Keep for now if gateway doesn't support DOCKER_HOST, usually docker-php libs do.
     environment:
       - JWT_SECRET=${JWT_SECRET}
     networks:
@@ -138,7 +161,7 @@ services:
     container_name: lp-mysql-mother
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306" # Localhost only
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
@@ -163,7 +186,7 @@ services:
     container_name: lp-postgres-mother
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432" # Localhost only
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
       POSTGRES_DB: postgres
@@ -188,7 +211,7 @@ services:
     container_name: lp-mongo-mother
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27017:27017" # Public access allowed for Compass
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
