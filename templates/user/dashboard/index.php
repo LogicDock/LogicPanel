@@ -8,10 +8,66 @@ $configFile = __DIR__ . '/../../../config/settings.json';
 if (file_exists($configFile)) {
     $sysConfig = json_decode(file_get_contents($configFile), true);
 }
-// Default to SERVER_ADDR if not set in config, or fallback to placeholder
-$serverIp = $sysConfig['server_ip'] ?? ($_SERVER['SERVER_ADDR'] ?? '127.0.0.1');
-$ns1 = $sysConfig['ns1'] ?? 'ns1.cyberit.cloud';
-$ns2 = $sysConfig['ns2'] ?? 'ns2.cyberit.cloud';
+
+// Get server IP - prioritize config, fallback to auto-detection
+$serverIp = $sysConfig['server_ip'] ?? '';
+
+// If server_ip is empty or localhost, try to auto-detect public IP
+if (empty($serverIp) || $serverIp === '127.0.0.1' || $serverIp === 'localhost') {
+    // Try to get public IP from various sources
+    // 1. Check if running behind proxy (nginx-proxy sends X-Forwarded headers)
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $serverIp = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+    } elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+        $serverIp = $_SERVER['HTTP_X_REAL_IP'];
+    } else {
+        // 2. Try to get from hostname in URL
+        $currentHost = $_SERVER['HTTP_HOST'] ?? '';
+        if (!empty($currentHost) && !preg_match('/^localhost|127\.0\.0\.1/', $currentHost)) {
+            // Try to resolve to IP
+            $hostWithoutPort = preg_replace('/:\d+$/', '', $currentHost);
+            $resolvedIp = gethostbyname($hostWithoutPort);
+            if ($resolvedIp !== $hostWithoutPort) {
+                $serverIp = $resolvedIp;
+            }
+        }
+    }
+
+    // 3. Final fallback - use external service (cached for performance)
+    if (empty($serverIp) || $serverIp === '127.0.0.1') {
+        $cacheFile = '/tmp/logicpanel_public_ip.txt';
+        $cacheTime = 3600; // Cache for 1 hour
+
+        if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTime) {
+            $serverIp = trim(file_get_contents($cacheFile));
+        } else {
+            // Try multiple services for redundancy
+            $ipServices = [
+                'https://api.ipify.org',
+                'https://ifconfig.me/ip',
+                'https://icanhazip.com'
+            ];
+
+            foreach ($ipServices as $service) {
+                $ctx = stream_context_create(['http' => ['timeout' => 2]]);
+                $detectedIp = @file_get_contents($service, false, $ctx);
+                if ($detectedIp && filter_var(trim($detectedIp), FILTER_VALIDATE_IP)) {
+                    $serverIp = trim($detectedIp);
+                    @file_put_contents($cacheFile, $serverIp);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Ultimate fallback
+    if (empty($serverIp)) {
+        $serverIp = $_SERVER['SERVER_ADDR'] ?? 'Not Configured';
+    }
+}
+
+$ns1 = $sysConfig['ns1'] ?? '';
+$ns2 = $sysConfig['ns2'] ?? '';
 
 ob_start();
 ?>
