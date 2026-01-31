@@ -9,16 +9,19 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use LogicPanel\Application\Services\JwtService;
+use LogicPanel\Application\Services\TokenBlacklistService;
 use LogicPanel\Domain\User\User;
 use Slim\Psr7\Response;
 
 class AuthMiddleware implements MiddlewareInterface
 {
     private JwtService $jwtService;
+    private TokenBlacklistService $blacklistService;
 
-    public function __construct(JwtService $jwtService)
+    public function __construct(JwtService $jwtService, TokenBlacklistService $blacklistService)
     {
         $this->jwtService = $jwtService;
+        $this->blacklistService = $blacklistService;
     }
 
     public function process(
@@ -65,6 +68,11 @@ class AuthMiddleware implements MiddlewareInterface
             return $this->unauthorized('Missing authorization header');
         }
 
+        // Check if token is blacklisted
+        if ($this->blacklistService->isBlacklisted($token)) {
+            return $this->unauthorized('Token has been revoked');
+        }
+
         try {
             $decoded = $this->jwtService->verifyToken($token);
         } catch (\Exception $e) {
@@ -89,6 +97,8 @@ class AuthMiddleware implements MiddlewareInterface
         // Add user to request attributes
         $request = $request->withAttribute('user', $user);
         $request = $request->withAttribute('userId', $user->id);
+        $request = $request->withAttribute('token_decoded', $decoded);
+        $request = $request->withAttribute('token_string', $token);
 
         return $handler->handle($request);
     }

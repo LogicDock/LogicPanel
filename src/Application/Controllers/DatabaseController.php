@@ -31,22 +31,37 @@ class DatabaseController
             $query->where('service_id', $serviceId);
         }
 
-        $databases = $query->get();
+        $queryParams = $request->getQueryParams();
+        $page = (int) ($queryParams['page'] ?? 1);
+        $perPage = (int) ($queryParams['per_page'] ?? 15);
+        if ($perPage > 100)
+            $perPage = 100;
+
+        $total = $query->count();
+        $databases = $query->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get();
 
         return $this->jsonResponse($response, [
             'databases' => $databases->map(function ($db) {
                 return [
                     'id' => $db->id,
-                    'service_id' => $db->service_id, // Added service_id to response
+                    'service_id' => $db->service_id,
                     'type' => $db->db_type,
                     'name' => $db->db_name,
                     'user' => $db->db_user,
-                    'password' => $this->decryptPassword($db->db_password), // Decrypt before sending
+                    'password' => $this->decryptPassword($db->db_password),
                     'host' => $db->db_host,
                     'port' => $db->db_port,
                     'created_at' => $db->created_at->toIso8601String(),
                 ];
             }),
+            'pagination' => [
+                'total' => $total,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total_pages' => ceil($total / $perPage)
+            ]
         ]);
     }
 

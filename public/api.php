@@ -46,6 +46,10 @@ $container = new Container();
 $container->set('settings', $settings);
 
 // Register services
+$container->set(\LogicPanel\Application\Services\TokenBlacklistService::class, function () {
+    return new \LogicPanel\Application\Services\TokenBlacklistService();
+});
+
 $container->set(JwtService::class, function () use ($settings) {
     return new JwtService($settings['jwt']);
 });
@@ -60,7 +64,10 @@ $container->set(DatabaseProvisionerService::class, function () use ($settings) {
 
 // Register middleware
 $container->set(AuthMiddleware::class, function ($container) {
-    return new AuthMiddleware($container->get(JwtService::class));
+    return new AuthMiddleware(
+        $container->get(JwtService::class),
+        $container->get(\LogicPanel\Application\Services\TokenBlacklistService::class)
+    );
 });
 
 $container->set(CorsMiddleware::class, function () {
@@ -69,7 +76,10 @@ $container->set(CorsMiddleware::class, function () {
 
 // Register controllers
 $container->set(AuthController::class, function ($container) {
-    return new AuthController($container->get(JwtService::class));
+    return new AuthController(
+        $container->get(JwtService::class),
+        $container->get(\LogicPanel\Application\Services\TokenBlacklistService::class)
+    );
 });
 
 $container->set(ServiceController::class, function ($container) {

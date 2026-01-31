@@ -7,15 +7,18 @@ namespace LogicPanel\Application\Controllers;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use LogicPanel\Application\Services\JwtService;
+use LogicPanel\Application\Services\TokenBlacklistService;
 use LogicPanel\Domain\User\User;
 
 class AuthController
 {
     private JwtService $jwtService;
+    private TokenBlacklistService $blacklistService;
 
-    public function __construct(JwtService $jwtService)
+    public function __construct(JwtService $jwtService, TokenBlacklistService $blacklistService)
     {
         $this->jwtService = $jwtService;
+        $this->blacklistService = $blacklistService;
     }
 
     public function login(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -191,6 +194,16 @@ class AuthController
 
     public function logout(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
+        $token = $request->getAttribute('token_string');
+        $decoded = $request->getAttribute('token_decoded');
+
+        if ($token && $decoded && isset($decoded->exp)) {
+            $expiresIn = $decoded->exp - time();
+            if ($expiresIn > 0) {
+                $this->blacklistService->blacklist($token, $expiresIn);
+            }
+        }
+
         return $this->jsonResponse($response, [
             'message' => 'Logged out successfully'
         ]);

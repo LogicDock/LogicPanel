@@ -24,15 +24,23 @@ class ServiceController
     public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $userId = $request->getAttribute('userId');
-        $services = Service::where('user_id', $userId)->get();
+        $queryParams = $request->getQueryParams();
+
+        $page = (int) ($queryParams['page'] ?? 1);
+        $perPage = (int) ($queryParams['per_page'] ?? 15);
+        if ($perPage > 100)
+            $perPage = 100; // Cap per page
+
+        $query = Service::where('user_id', $userId);
+
+        $total = $query->count();
+        $services = $query->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get();
 
         // Sync status with Docker
         $services->transform(function ($service) {
             if ($service->container_id) {
-                // Check if we should hold the 'deploying' status
-                // Logic removed: Real-time detection requested.
-                // if ($service->status === 'deploying') { ... }
-
                 $isRunning = $this->dockerService->isContainerRunning($service->container_id);
                 $newStatus = $isRunning ? 'running' : 'stopped';
 
@@ -64,6 +72,12 @@ class ServiceController
                     'created_at' => $service->created_at->toIso8601String(),
                 ];
             }),
+            'pagination' => [
+                'total' => $total,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total_pages' => ceil($total / $perPage)
+            ]
         ]);
     }
 
@@ -554,12 +568,29 @@ class ServiceController
         $data = json_decode((string) $request->getBody(), true) ?: [];
 
         // Update allowed fields
-        $allowedFields = ['name', 'domain', 'install_command', 'build_command', 'start_command', 'env_vars', 'runtime_version'];
+        $allowedFields = ['name', 'domain', 'install_command', 'build_command', 'start_command', 'env_vars', 'runtime_version', 'status'];
         $domainChanged = false;
 
         foreach ($allowedFields as $field) {
             if (isset($data[$field])) {
-                if ($field === 'domain') {
+                if ($field === 'status') {
+                    // Handle status actions (RESTful way to start/stop/restart)
+                    $action = $data[$field];
+                    try {
+                        if ($action === 'running' || $action === 'start') {
+                            $this->dockerService->startContainer($service->container_id);
+                            $service->status = 'running';
+                        } elseif ($action === 'stopped' || $action === 'stop') {
+                            $this->dockerService->stopContainer($service->container_id);
+                            $service->status = 'stopped';
+                        } elseif ($action === 'restart') {
+                            $this->dockerService->restartContainer($service->container_id);
+                            $service->status = 'running';
+                        }
+                    } catch (\Exception $e) {
+                        // Log error but continue with other updates
+                    }
+                } elseif ($field === 'domain') {
                     // Validate Domain (allow comma separated, alphanumeric, dots, hyphens)
                     $domains = explode(',', $data[$field]);
                     $cleanDomains = [];
