@@ -920,9 +920,21 @@ class ServiceController
         $secret = $_ENV['JWT_SECRET'] ?? 'secret';
         $token = JWT::encode($payload, $secret, 'HS256');
 
+        // Build dynamic gateway URL based on request host
+        // We route through Apache proxy at /ws/terminal to handle SSL properly
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+        // Determine protocol (wss for HTTPS, ws for HTTP)
+        $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        $wsProtocol = $isSecure ? 'wss' : 'ws';
+
+        // Use the proxy path /ws/terminal instead of direct port
+        $gatewayUrl = "{$wsProtocol}://{$host}/ws/terminal";
+
         return $this->jsonResponse($response, [
             'token' => $token,
-            'gateway_url' => 'ws://localhost:3002' // Points to local gateway
+            'gateway_url' => $gatewayUrl
         ]);
     }
 }
