@@ -46,7 +46,7 @@ class AuthMiddleware implements MiddlewareInterface
         if (empty($token)) {
             $apiKeyHeader = $request->getHeaderLine('X-API-Key');
             if (!empty($apiKeyHeader)) {
-                $apiKey = \LogicPanel\Domain\User\ApiKey::where('p_key', $apiKeyHeader)->first();
+                $apiKey = \LogicPanel\Domain\User\ApiKey::where('key_hash', $apiKeyHeader)->first();
                 if ($apiKey) {
                     // Update Last Used
                     $apiKey->last_used_at = date('Y-m-d H:i:s');

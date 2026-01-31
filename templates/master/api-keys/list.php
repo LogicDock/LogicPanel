@@ -46,7 +46,7 @@ ob_start();
             <form id="createKeyForm">
                 <div class="form-group">
                     <label class="form-label">Key Name</label>
-                    <input type="text" name="name" class="form-control" placeholder="e.g. WHMCS Integration" required>
+                    <input type="text" name="name" class="form-control" placeholder="Enter Name" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Assign to User (ID)</label>

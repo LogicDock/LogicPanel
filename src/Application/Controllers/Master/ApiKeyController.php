@@ -51,7 +51,7 @@ class ApiKeyController
             $apiKey = new ApiKey();
             $apiKey->user_id = $userId;
             $apiKey->name = $name;
-            $apiKey->p_key = $keyString;
+            $apiKey->key_hash = $keyString;
             $apiKey->permissions = ['*']; // Full access for now
             $apiKey->save();
 
