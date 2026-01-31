@@ -95,12 +95,12 @@ class DockerService
             "VIRTUAL_PORT=3000",
         ];
 
-        if ($enableSsl) {
-            $command[] = "-e";
-            $command[] = "LETSENCRYPT_HOST={$domain}";
-            $command[] = "-e";
-            $command[] = "LETSENCRYPT_EMAIL={$sslEmail}";
-        }
+        // Always enable SSL for all apps (Let's Encrypt via nginx-proxy-companion)
+        $sslEmailToUse = $sslEmail ?: ($_ENV['LETSENCRYPT_DEFAULT_EMAIL'] ?? 'admin@cyberit.cloud');
+        $command[] = "-e";
+        $command[] = "LETSENCRYPT_HOST={$domain}";
+        $command[] = "-e";
+        $command[] = "LETSENCRYPT_EMAIL={$sslEmailToUse}";
 
         // Add environment variables
         $envVars['PORT'] = '3000';  // Standard port inside container
@@ -180,7 +180,7 @@ class DockerService
             $serverJs = <<<JS
 const http = require('http');
 const PORT = process.env.PORT || 3000;
-const DOMAIN = process.env.APP_DOMAIN || 'localhost';
+const DOMAIN = (process.env.APP_DOMAIN || 'localhost').split(',')[0].trim(); // Use primary domain only
 
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -203,7 +203,7 @@ const server = http.createServer((req, res) => {
                 <h1>🎉 Welcome to LogicPanel!</h1>
                 <p class="success">Your Node.js app is running successfully!</p>
                 <p>Upload your code via File Manager to replace this page.</p>
-                <p><small>Accessible at: <span class="domain">http://\${DOMAIN}</span></small></p>
+                <p><small>Accessible at: <a href="https://\${DOMAIN}" class="domain">https://\${DOMAIN}</a></small></p>
             </div>
         </body>
         </html>
@@ -224,22 +224,22 @@ import os
 
 app = Flask(__name__)
 PORT = int(os.environ.get('PORT', 3000))
-DOMAIN = os.environ.get('APP_DOMAIN', 'localhost')
+DOMAIN = os.environ.get('APP_DOMAIN', 'localhost').split(',')[0].strip()  # Use primary domain only
 
 @app.route('/')
 def hello():
-    return '''
+    return f'''
         <!DOCTYPE html>
         <html>
         <head>
             <title>Welcome to LogicPanel</title>
             <style>
-                body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-                .container { text-align: center; background: white; padding: 40px 60px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-                h1 { color: #333; margin-bottom: 10px; }
-                p { color: #666; }
-                .success { color: #28a745; font-weight: bold; }
-                .domain { color: #007bff; font-family: monospace; }
+                body {{ font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+                .container {{ text-align: center; background: white; padding: 40px 60px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }}
+                h1 {{ color: #333; margin-bottom: 10px; }}
+                p {{ color: #666; }}
+                .success {{ color: #28a745; font-weight: bold; }}
+                .domain {{ color: #007bff; font-family: monospace; }}
             </style>
         </head>
         <body>
@@ -247,7 +247,7 @@ def hello():
                 <h1>🎉 Welcome to LogicPanel!</h1>
                 <p class="success">Your Python app is running successfully!</p>
                 <p>Upload your code via File Manager to replace this page.</p>
-                <p><small>Accessible at: <span class="domain">http://''' + DOMAIN + '''</span></small></p>
+                <p><small>Accessible at: <a href="https://{DOMAIN}" class="domain">https://{DOMAIN}</a></small></p>
             </div>
         </body>
         </html>
