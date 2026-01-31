@@ -23,6 +23,22 @@ if (isset($_SERVER['HTTP_HOST'])) {
 }
 $tempEffectivePort = (int) ($tempHostPort ?: ($tempFwPort ?: $tempServerPort));
 $masterPort = (int) ($_ENV['MASTER_PORT'] ?? 999);
+$userPort = (int) ($_ENV['USER_PORT'] ?? 777);
+
+// Auto-redirect to user panel if accessing without port (port 80/443)
+// Skip for API requests and internal calls
+$isApiRequest = strpos($_SERVER['REQUEST_URI'] ?? '', '/api') !== false || strpos($_SERVER['REQUEST_URI'] ?? '', '/public/api') !== false;
+$isInternalCall = defined('LP_PUBLIC_ENTRY') || ($_SERVER['REMOTE_ADDR'] ?? '') === '127.0.0.1';
+
+if (!$isApiRequest && !$isInternalCall && in_array($tempEffectivePort, [80, 443, 0])) {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    // Remove any existing port from host
+    $host = preg_replace('/:\d+$/', '', $host);
+    $redirectUrl = "{$protocol}://{$host}:{$userPort}" . ($_SERVER['REQUEST_URI'] ?? '/');
+    header("Location: {$redirectUrl}", true, 302);
+    exit;
+}
 
 // Isolate sessions by changing the session name before start
 if ($tempEffectivePort === $masterPort || getenv('APP_MODE') === 'master') {
