@@ -45,16 +45,26 @@ echo "  • All configuration files"
 echo ""
 
 # Handle stdin properly when piped
-exec 3<&0
-if [ -t 0 ]; then :; else
-    if [ -c /dev/tty ]; then exec 0</dev/tty; fi
+if [ ! -t 0 ]; then
+    log_info "Running via pipe. Attaching to TTY for input..."
+    exec 3<&0
+    if [ -c /dev/tty ]; then
+        exec 0</dev/tty
+    else
+        log_error "Interactive terminal not available."
+        exit 1
+    fi
+    REDIRECTED_INPUT=true
+else
+    REDIRECTED_INPUT=false
 fi
 
-echo -n "Are you sure you want to uninstall LogicPanel? (y/N): "
-read CONFIRM
+echo ""
+read -e -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM
 
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Uninstall cancelled."
+    if [ "$REDIRECTED_INPUT" = true ]; then exec 0<&3; exec 3<&-; fi
     exit 0
 fi
 
