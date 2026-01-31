@@ -84,5 +84,17 @@ fi
 
 echo "=== SSL Setup Complete ==="
 
+# Configure WebSocket Proxy for Terminal Gateway
+cat >> /etc/apache2/sites-enabled/000-default.conf << 'WSEOF'
+
+# WebSocket Proxy for Terminal Gateway
+<Location /ws/terminal>
+    ProxyPass ws://logicpanel_gateway:3002
+    ProxyPassReverse ws://logicpanel_gateway:3002
+    ProxyPreserveHost On
+</Location>
+WSEOF
+echo "✓ WebSocket proxy configured for /ws/terminal"
+
 # Pass control to the main command (apache2-foreground)
 exec "$@"

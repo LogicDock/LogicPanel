@@ -17,9 +17,8 @@ RUN docker-php-ext-install pdo pdo_mysql mysqli pdo_pgsql pgsql zip mbstring int
 # Install PECL extensions (Redis)
 RUN pecl install redis && docker-php-ext-enable redis
 
-# Enable Apache Rewrite Module
 # Enable Apache Modules
-RUN a2enmod rewrite ssl
+RUN a2enmod rewrite ssl proxy proxy_http proxy_wstunnel
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
