@@ -330,11 +330,15 @@ DB_PROVISIONER_SECRET=${DB_PROVISIONER_SECRET}
 
 # Database Credentials (LogicPanel's own database)
 DB_CONNECTION=mysql
-DB_HOST=logicpanel_db
+DB_HOST=logicpanel-db
 DB_PORT=3306
 DB_DATABASE=${DB_NAME}
 DB_USERNAME=${DB_USER}
 DB_PASSWORD=${DB_PASS}
+
+# For MariaDB container compatibility
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
 
 # Root Passwords for Mother Containers
 MYSQL_ROOT_PASSWORD=${ROOT_PASS}
@@ -342,7 +346,7 @@ POSTGRES_ROOT_PASSWORD=${ROOT_PASS}
 MONGO_ROOT_PASSWORD=${ROOT_PASS}
 
 # Docker Configuration
-DOCKER_NETWORK=logicpanel_network
+DOCKER_NETWORK=logicpanel_internal
 USER_APPS_HOST_PATH=${INSTALL_DIR}/storage/user-apps
 
 # Nginx Proxy
@@ -463,7 +467,7 @@ echo -e "${GREEN}║${NC}                                                       
 echo -e "${GREEN}║${NC}  ${YELLOW}🔐 ADMIN CREDENTIALS${NC}                                         ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}     Username:    ${CYAN}${ADMIN_USER}${NC}"
 echo -e "${GREEN}║${NC}     Email:       ${CYAN}${ADMIN_EMAIL}${NC}"
-echo -e "${GREEN}║${NC}     Password:    ${CYAN}(the password you entered)${NC}"
+echo -e "${GREEN}║${NC}     Password:    ${CYAN}${ADMIN_PASS}${NC}"
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
 echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
