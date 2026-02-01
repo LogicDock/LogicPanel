@@ -64,16 +64,6 @@ ob_start();
                         <input type="text" name="ns2" class="form-control" placeholder="ns2.example.com">
                     </div>
                 </div>
-                <div class="row mt-10">
-                    <div class="col">
-                        <label class="form-label">Master Panel Port</label>
-                        <input type="number" name="master_port" class="form-control" placeholder="967">
-                    </div>
-                    <div class="col">
-                        <label class="form-label">User Panel Port</label>
-                        <input type="number" name="user_port" class="form-control" placeholder="767">
-                    </div>
-                </div>
             </div>
 
             <div class="form-section mt-20">
@@ -215,30 +205,7 @@ ob_start();
             const result = await res.json();
 
             if (res.ok) {
-                if (result.restart) {
-                    showNotification('Port changed. Restarting container...', 'warning');
-
-                    const newMasterPort = result.settings.master_port;
-                    const countBtn = document.querySelector('.btn-primary');
-                    countBtn.disabled = true;
-
-                    let seconds = 15;
-                    const interval = setInterval(() => {
-                        countBtn.innerHTML = `Redirecting in ${seconds}s...`;
-                        seconds--;
-                        if (seconds <= 0) {
-                            clearInterval(interval);
-                            const host = window.location.hostname;
-                            const protocol = window.location.protocol;
-                            window.location.href = `${protocol}//${host}:${newMasterPort}/settings/config`;
-                        }
-                    }, 1000);
-
-                    // Don't reset button
-                    return;
-                } else {
-                    showNotification('Settings saved successfully', 'success');
-                }
+                showNotification('Settings saved successfully', 'success');
             } else {
                 showNotification(result.error || 'Failed to save', 'error');
             }

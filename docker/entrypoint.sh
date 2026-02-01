@@ -120,5 +120,14 @@ cat >> /etc/apache2/sites-enabled/000-default.conf << 'WSEOF'
 WSEOF
 echo "✓ WebSocket proxy configured for /ws/terminal"
 
+# Fix permissions for config and storage directories
+echo "=== Fixing Permissions ==="
+chown -R www-data:www-data /var/www/html/config/ 2>/dev/null || true
+chmod 755 /var/www/html/config/ 2>/dev/null || true
+chmod 644 /var/www/html/config/*.json 2>/dev/null || true
+chown -R www-data:www-data /var/www/html/storage/ 2>/dev/null || true
+chmod -R 775 /var/www/html/storage/ 2>/dev/null || true
+echo "✓ Permissions fixed for config and storage"
+
 # Pass control to the main command (apache2-foreground)
 exec "$@"

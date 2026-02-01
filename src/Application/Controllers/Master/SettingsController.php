@@ -28,9 +28,7 @@ class SettingsController
         $allowed = [
             'company_name',
             'hostname',
-            'server_ip', // Added server_ip
-            'master_port',
-            'user_port',
+            'server_ip',
             'contact_email',
             'default_language',
             'timezone',
@@ -62,43 +60,7 @@ class SettingsController
             }
         }
 
-        // Check if ports changed compared to ACTUAL environment
-        $restartRequired = false;
-        $updates = [];
-
-        $masterPort = (int) ($data['master_port'] ?? 967);
-        $userPort = (int) ($data['user_port'] ?? 767);
-
-        $currentMaster = (int) ($_ENV['MASTER_PORT'] ?? 967);
-        $currentUser = (int) ($_ENV['USER_PORT'] ?? 767);
-
-        if ($masterPort !== $currentMaster) {
-            $updates['MASTER_PORT'] = $masterPort;
-            $restartRequired = true;
-        }
-
-        if ($userPort !== $currentUser) {
-            $updates['USER_PORT'] = $userPort;
-            $restartRequired = true;
-        }
-
-        if (!empty($updates)) {
-            $this->updateEnvFile($updates);
-        }
-
         file_put_contents($this->configFile, json_encode($current, JSON_PRETTY_PRINT));
-
-        if ($restartRequired) {
-            // Trigger background restart - docker-compose is in /opt/logicpanel
-            $cmd = "nohup sh -c \"sleep 2 && cd /opt/logicpanel && docker compose down app && docker compose up -d app\" > /var/www/html/storage/logs/restart.log 2>&1 &";
-            exec($cmd);
-
-            return $this->jsonResponse($response, [
-                'message' => 'Settings updated. Panel is restarting on new port(s). Please wait 30 seconds and refresh.',
-                'settings' => $current,
-                'restart' => true
-            ]);
-        }
 
         return $this->jsonResponse($response, ['message' => 'Settings updated successfully', 'settings' => $current]);
     }
