@@ -55,29 +55,37 @@ for i in {1..18}; do
     # Pattern 1: domain.crt and domain.key (flat structure)
     if [ -f "$CERT_DIR/$DOMAIN.crt" ] && [ -f "$CERT_DIR/$DOMAIN.key" ]; then
         echo "Found certs (flat): $DOMAIN.crt and $DOMAIN.key"
-        ln -sf "$CERT_DIR/$DOMAIN.crt" /etc/apache2/ssl/server.crt
-        ln -sf "$CERT_DIR/$DOMAIN.key" /etc/apache2/ssl/server.key
+        cp "$CERT_DIR/$DOMAIN.crt" /etc/apache2/ssl/server.crt
+        cp "$CERT_DIR/$DOMAIN.key" /etc/apache2/ssl/server.key
+        chmod 644 /etc/apache2/ssl/server.crt
+        chmod 600 /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
     # Pattern 2: domain/fullchain.pem and domain/key.pem (nginx-proxy-companion standard)
     elif [ -f "$CERT_DIR/$DOMAIN/fullchain.pem" ] && [ -f "$CERT_DIR/$DOMAIN/key.pem" ]; then
         echo "Found certs (folder): $DOMAIN/fullchain.pem and key.pem"
-        ln -sf "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt
-        ln -sf "$CERT_DIR/$DOMAIN/key.pem" /etc/apache2/ssl/server.key
+        cp "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt
+        cp "$CERT_DIR/$DOMAIN/key.pem" /etc/apache2/ssl/server.key
+        chmod 644 /etc/apache2/ssl/server.crt
+        chmod 600 /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
     # Pattern 3: domain/cert.pem and domain/key.pem
     elif [ -f "$CERT_DIR/$DOMAIN/cert.pem" ] && [ -f "$CERT_DIR/$DOMAIN/key.pem" ]; then
         echo "Found certs (folder): $DOMAIN/cert.pem and key.pem"
-        ln -sf "$CERT_DIR/$DOMAIN/cert.pem" /etc/apache2/ssl/server.crt
-        ln -sf "$CERT_DIR/$DOMAIN/key.pem" /etc/apache2/ssl/server.key
+        cp "$CERT_DIR/$DOMAIN/cert.pem" /etc/apache2/ssl/server.crt
+        cp "$CERT_DIR/$DOMAIN/key.pem" /etc/apache2/ssl/server.key
+        chmod 644 /etc/apache2/ssl/server.crt
+        chmod 600 /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
     # Pattern 4: domain/privkey.pem (some setups use this name)
     elif [ -f "$CERT_DIR/$DOMAIN/fullchain.pem" ] && [ -f "$CERT_DIR/$DOMAIN/privkey.pem" ]; then
         echo "Found certs (folder): $DOMAIN/fullchain.pem and privkey.pem"
-        ln -sf "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt
-        ln -sf "$CERT_DIR/$DOMAIN/privkey.pem" /etc/apache2/ssl/server.key
+        cp "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt
+        cp "$CERT_DIR/$DOMAIN/privkey.pem" /etc/apache2/ssl/server.key
+        chmod 644 /etc/apache2/ssl/server.crt
+        chmod 600 /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
     fi
