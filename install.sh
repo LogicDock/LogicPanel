@@ -415,16 +415,25 @@ if [ "$ALL_RUNNING" = false ]; then
 fi
 
 # Download and Inject Admin Setup Script
-curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create_admin.php" -o create_admin.php
-docker exec logicpanel_app mkdir -p /var/www/html/database
-docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
-docker cp config/settings.json logicpanel_app:/var/www/html/config/settings.json
-rm -f create_admin.php
+log_info "Downloading admin setup script..."
+if curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create_admin.php" -o create_admin.php; then
+    docker exec logicpanel_app mkdir -p /var/www/html/database 2>/dev/null || true
+    docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
+    docker cp config/settings.json logicpanel_app:/var/www/html/config/settings.json 2>/dev/null || true
+    rm -f create_admin.php
 
-# Execute Admin Creation
-log_info "Creating administrator account..."
-docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}" > /dev/null 2>&1
-docker exec logicpanel_app rm -f /var/www/html/create_admin.php
+    # Execute Admin Creation (show output for debugging)
+    log_info "Creating administrator account..."
+    if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
+        log_success "Administrator account created successfully!"
+    else
+        log_warn "Admin creation had issues. You may need to run it manually later."
+        log_warn "Command: docker exec logicpanel_app php /var/www/html/create_admin.php --user=YOUR_USER --email=YOUR_EMAIL --pass=YOUR_PASS"
+    fi
+    docker exec logicpanel_app rm -f /var/www/html/create_admin.php 2>/dev/null || true
+else
+    log_warn "Could not download admin script. Please create admin manually after installation."
+fi
 
 # Final setup - ensure gateway is on both networks
 docker network connect nginx-proxy_web logicpanel_gateway 2>/dev/null || true
