@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('admin', 'reseller', 'user') DEFAULT 'user',
     status ENUM('active', 'suspended', 'terminated') DEFAULT 'active',
     package_id INT UNSIGNED DEFAULT NULL,
+    failed_login_attempts INT DEFAULT 0,
+    locked_until TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),

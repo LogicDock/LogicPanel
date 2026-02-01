@@ -426,14 +426,39 @@ if curl -sSL "https://raw.githubusercontent.com/LogicDock/LogicPanel/main/create
     docker cp config/settings.json logicpanel_app:/var/www/html/config/settings.json 2>/dev/null || true
     rm -f create_admin.php
 
-    # Execute Admin Creation (show output for debugging)
-    log_info "Creating administrator account..."
-    if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
-        log_success "Administrator account created successfully!"
+    # Wait for Database to be ready (Retry loop)
+    log_info "Waiting for Database to initialize..."
+    MAX_RETRIES=30
+    COUNT=0
+    DB_READY=false
+    
+    while [ $COUNT -lt $MAX_RETRIES ]; do
+        if docker exec logicpanel_app php -r "try { new PDO('mysql:host=logicpanel-db;dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); echo 'connected'; } catch(Exception \$e) { exit(1); }" >/dev/null 2>&1; then
+            DB_READY=true
+            break
+        fi
+        echo -n "."
+        sleep 5
+        COUNT=$((COUNT+1))
+    done
+    echo ""
+
+    if [ "$DB_READY" = true ]; then
+        log_success "Database is ready."
+        
+        # Execute Admin Creation (show output for debugging)
+        log_info "Creating administrator account..."
+        if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
+            log_success "Administrator account created successfully!"
+        else
+            log_warn "Admin creation had issues. You may need to run it manually later."
+            log_warn "Command: docker exec logicpanel_app php /var/www/html/create_admin.php --user=YOUR_USER --email=YOUR_EMAIL --pass=YOUR_PASS"
+        fi
     else
-        log_warn "Admin creation had issues. You may need to run it manually later."
-        log_warn "Command: docker exec logicpanel_app php /var/www/html/create_admin.php --user=YOUR_USER --email=YOUR_EMAIL --pass=YOUR_PASS"
+        log_error "Database failed to initialize within expected time."
+        log_warn "Admin creation skipped due to timeout. Please run create_admin.php manually after checking logs."
     fi
+
     docker exec logicpanel_app rm -f /var/www/html/create_admin.php 2>/dev/null || true
 else
     log_warn "Could not download admin script. Please create admin manually after installation."

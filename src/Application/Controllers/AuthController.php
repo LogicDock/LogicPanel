@@ -24,10 +24,13 @@ class AuthController
     public function login(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $data = $request->getParsedBody();
+        error_log("Login Attempt: " . json_encode($data)); // DEBUG
+
         $username = $data['username'] ?? '';
         $password = $data['password'] ?? '';
 
         if (empty($username) || empty($password)) {
+            error_log("Login Failed: Missing credentials"); // DEBUG
             return $this->jsonResponse($response, [
                 'error' => 'Username and password are required'
             ], 400);
@@ -36,10 +39,13 @@ class AuthController
         $user = User::where('username', $username)->first();
 
         if (!$user) {
+            error_log("Login Failed: User not found for username: $username"); // DEBUG
             return $this->jsonResponse($response, [
                 'error' => 'Invalid credentials'
             ], 401);
         }
+
+        error_log("User Found: ID " . $user->id . ", Hash: " . substr($user->password_hash, 0, 20) . "..."); // DEBUG
 
         // Check if account is locked
         if ($user->locked_until && strtotime($user->locked_until) > time()) {
@@ -51,6 +57,7 @@ class AuthController
         }
 
         if (!$user->verifyPassword($password)) {
+            error_log("Login Failed: Password verification failed"); // DEBUG
             // Increment failed attempts
             $failedAttempts = ($user->failed_login_attempts ?? 0) + 1;
             $user->failed_login_attempts = $failedAttempts;
