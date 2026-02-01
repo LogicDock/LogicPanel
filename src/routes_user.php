@@ -147,6 +147,13 @@ return function (App $app) {
         $group->patch('/services/{id}', [ServiceController::class, 'update']);
         $group->delete('/services/{id}', [ServiceController::class, 'delete']);
         $group->get('/auth/me', [AuthController::class, 'me']);
+
+        // Database routes (legacy support)
+        $group->get('/databases', [DatabaseController::class, 'index']);
+        $group->post('/databases', [DatabaseController::class, 'create']);
+        $group->get('/databases/{id}', [DatabaseController::class, 'show']);
+        $group->delete('/databases/{id}', [DatabaseController::class, 'delete']);
+
         // ... adding only frequently used ones for legacy support
     })->add(AuthMiddleware::class);
 };
