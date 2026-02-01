@@ -1,12 +1,12 @@
 version: '3.8'
 
 networks:
-  logicpanel_network:
+  # External network created by install.sh nginx-proxy
+  nginx-proxy_web:
+    external: true
+  # Internal network for LogicPanel services
+  logicpanel_internal:
     driver: bridge
-    internal: false
-  db_internal:
-    driver: bridge
-    internal: true
 
 volumes:
   mysql_data:
@@ -14,16 +14,11 @@ volumes:
   mongo_data:
   redis_data:
   logicpanel_db_maria_data:
-  logicpanel_user_apps:
+  logicpanel_user_apps: # External cert volume from nginx-proxy (will be created if not exists)
+
   certs:
     external: true
-    name: nginx-proxy_certs
-  vhost:
-    external: true
-    name: nginx-proxy_vhost
-  html:
-    external: true
-    name: nginx-proxy_html
+    name: ${CERT_VOLUME:-nginx-proxy_certs}
 
 services:
   # Docker Socket Proxy - Secure Docker API access
@@ -35,51 +30,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - CONTAINERS=1
-      - POST=0 # Secure: GET only for containers usually, but we need start/stop
+      - POST=1
       - EXEC=1
       - IMAGES=1
       - INFO=1
       - NETWORKS=1
       - SERVICES=1
       - TASKS=1
-      - VOLUMES=1 # Needed for volume management
+      - VOLUMES=1
+      - START=1
+      - STOP=1
+      - KILL=1
+      - RESTART=1
     networks:
-      - logicpanel_network
-
-  # Nginx Proxy - Automated Reverse Proxy
-  nginx-proxy:
-    image: jwilder/nginx-proxy:alpine
-    container_name: logicpanel_nginx_proxy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-    networks:
-      - logicpanel_network
-    environment:
-      - DEFAULT_HOST=panel.cyberit.cloud
-
-  # Let's Encrypt Companion
-  letsencrypt:
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    container_name: logicpanel_letsencrypt
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-    environment:
-      - NGINX_PROXY_CONTAINER=logicpanel_nginx_proxy
-    depends_on:
-      - nginx-proxy
-    networks:
-      - logicpanel_network
+      - logicpanel_internal
 
   # LogicPanel Application (The Dashboard)
   app:
@@ -93,15 +57,15 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=logicpanel-db
       - DB_PORT=3306
-      - DB_DATABASE=${DB_NAME:-logicpanel}
-      - DB_USERNAME=${DB_USER:-logicpanel}
+      - DB_DATABASE=${DB_DATABASE:-logicpanel}
+      - DB_USERNAME=${DB_USERNAME:-logicpanel}
       - DB_PASSWORD=${DB_PASSWORD:-logicpanel_password}
       - MYSQL_CONTAINER=lp-mysql-mother
       - POSTGRES_CONTAINER=lp-postgres-mother
       - MONGO_CONTAINER=lp-mongo-mother
       # Docker Configuration - Use Proxy
       - DOCKER_HOST=tcp://docker-proxy:2375
-      - DOCKER_NETWORK=${DOCKER_NETWORK}
+      - DOCKER_NETWORK=logicpanel_internal
       - USER_APPS_PATH=/var/www/html/storage/user-apps
       - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-/opt/logicpanel/storage/user-apps}
       - APP_DOMAIN=${PANEL_DOMAIN:-cyberit.cloud}
@@ -113,18 +77,16 @@ services:
       - VIRTUAL_PORT=80
     volumes:
       - .:/var/www/html
-      # - /var/run/docker.sock:/var/run/docker.sock # SECURED: Removed direct mount
       - certs:/etc/nginx/certs:ro
     networks:
-      - logicpanel_network
-      - db_internal
+      - nginx-proxy_web
+      - logicpanel_internal
     depends_on:
       - logicpanel-db
       - mysql
       - postgres
       - mongo
       - redis
-      - nginx-proxy
       - docker-proxy
     # Terminal Gateway (PHP Ratchet Sidecar)
   terminal-gateway:
@@ -139,7 +101,8 @@ services:
     environment:
       - JWT_SECRET=${JWT_SECRET}
     networks:
-      - logicpanel_network
+      - nginx-proxy_web
+      - logicpanel_internal
 
   # LogicPanel Dedicated Database (MariaDB 10.11)
   logicpanel-db:
@@ -154,7 +117,7 @@ services:
     volumes:
       - logicpanel_db_maria_data:/var/lib/mysql
     networks:
-      - db_internal
+      - logicpanel_internal
 
   # MariaDB - Mother Container
   mysql:
@@ -171,8 +134,7 @@ services:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - db_internal
-      - logicpanel_network
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -196,8 +158,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - db_internal
-      - logicpanel_network
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -220,8 +181,7 @@ services:
       - mongo_data:/data/db
       - ./docker/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
-      - db_internal
-      - logicpanel_network
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -239,7 +199,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - logicpanel_network
+      - logicpanel_internal
     deploy:
       resources:
         limits:
@@ -267,8 +227,7 @@ services:
       - MONGO_PORT=27017
       - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
     networks:
-      - logicpanel_network
-      - db_internal
+      - logicpanel_internal
     depends_on:
       - mysql
       - postgres
@@ -282,8 +241,7 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - db_internal
-      - logicpanel_network
+      - logicpanel_internal
     environment:
       ADMINER_DEFAULT_SERVER: mysql
     profiles:
