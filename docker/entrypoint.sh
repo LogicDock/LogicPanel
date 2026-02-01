@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+echo "=== LogicPanel Container Starting ==="
+
 # Fix docker socket permissions
 if [ -S /var/run/docker.sock ]; then
     # Option 1: Change group ownership to www-data (if possible)
@@ -14,6 +16,20 @@ fi
 if [ -d /var/www/html/storage/user-apps ]; then
     chown www-data:www-data /var/www/html/storage/user-apps
     chmod 777 /var/www/html/storage/user-apps
+fi
+
+# Install Composer dependencies (volume mount may override build-time vendor folder)
+echo "=== Installing Composer Dependencies ==="
+if [ -f /var/www/html/composer.json ]; then
+    cd /var/www/html
+    if [ ! -d vendor ] || [ ! -f vendor/autoload.php ]; then
+        echo "Vendor folder missing, running composer install..."
+        composer install --no-dev --optimize-autoloader --no-interaction
+    else
+        echo "Vendor folder exists, skipping composer install."
+    fi
+else
+    echo "No composer.json found, skipping dependency installation."
 fi
 
 # logicpanel-ssl: Auto-link Let's Encrypt certs for Apache
