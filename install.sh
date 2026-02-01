@@ -477,6 +477,41 @@ echo "██║     ██║   ██║██║  ███╗██║██�
 echo "██║     ██║   ██║██║   ██║██║██║     ██╔═══╝ ██╔══██║██║╚██╗██║██╔══╝  ██║     "
 echo "███████╗╚██████╔╝╚██████╔╝██║╚██████╗██║     ██║  ██║██║ ╚████║███████╗███████╗"
 echo "╚══════╝ ╚═════╝  ╚═════╝ ╚═╝ ╚═════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝"
+# --- 8. Setup SSL Auto-Fix ---
+log_info "Setting up automatic SSL certificate management..."
+
+# Create SSL fix script inside container
+docker exec logicpanel_app bash -c 'cat > /usr/local/bin/fix-ssl.sh << '\''SSLEOF'\''
+#!/bin/bash
+if [ -L /etc/nginx/certs/'"${PANEL_DOMAIN}"'.crt ]; then
+    CURRENT_ISSUER=$(openssl x509 -in /etc/apache2/ssl/server.crt -noout -issuer 2>/dev/null | grep "Let'\''s Encrypt")
+    if [ -z "$CURRENT_ISSUER" ]; then
+        echo "$(date): Fixing SSL certificate..."
+        cp -L /etc/nginx/certs/'"${PANEL_DOMAIN}"'.crt /etc/apache2/ssl/server.crt
+        cp -L /etc/nginx/certs/'"${PANEL_DOMAIN}"'.key /etc/apache2/ssl/server.key
+        chmod 644 /etc/apache2/ssl/server.crt
+        chmod 600 /etc/apache2/ssl/server.key
+        apachectl graceful 2>/dev/null
+        echo "$(date): SSL certificate fixed!"
+    fi
+fi
+SSLEOF
+chmod +x /usr/local/bin/fix-ssl.sh
+' > /dev/null 2>&1
+
+# Add cron job to host system (runs every minute)
+(crontab -l 2>/dev/null | grep -v "fix-ssl.sh"; echo "* * * * * docker exec logicpanel_app /usr/local/bin/fix-ssl.sh >> /var/log/logicpanel-ssl-fix.log 2>&1") | crontab -
+
+# Run once immediately
+docker exec logicpanel_app /usr/local/bin/fix-ssl.sh > /dev/null 2>&1
+
+log_success "SSL auto-fix configured (checks every minute)"
+
+# --- 9. Final Wait for SSL Propagation ---
+echo ""
+log_info "Waiting for SSL certificates to fully propagate..."
+countdown_progress 180 "SSL propagation and service stabilization"
+
 echo -e "${NC}"
 
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"

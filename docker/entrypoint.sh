@@ -52,8 +52,18 @@ fi
 # Wait up to 90 seconds for certs to appear (LetsEncrypt companion needs time)
 CERT_FOUND=false
 for i in {1..18}; do
-    # Pattern 1: domain.crt and domain.key (flat structure)
-    if [ -f "$CERT_DIR/$DOMAIN.crt" ] && [ -f "$CERT_DIR/$DOMAIN.key" ]; then
+    # Pattern 1: Symlinked certificates (nginx-letsencrypt standard) - CHECK FIRST!
+    if [ -L "$CERT_DIR/$DOMAIN.crt" ] && [ -L "$CERT_DIR/$DOMAIN.key" ]; then
+        echo "Found symlinked certs: $DOMAIN.crt and $DOMAIN.key"
+        # Follow symlinks and copy actual files
+        cp -L "$CERT_DIR/$DOMAIN.crt" /etc/apache2/ssl/server.crt
+        cp -L "$CERT_DIR/$DOMAIN.key" /etc/apache2/ssl/server.key
+        chmod 644 /etc/apache2/ssl/server.crt
+        chmod 600 /etc/apache2/ssl/server.key
+        CERT_FOUND=true
+        break
+    # Pattern 2: domain.crt and domain.key (flat structure)
+    elif [ -f "$CERT_DIR/$DOMAIN.crt" ] && [ -f "$CERT_DIR/$DOMAIN.key" ]; then
         echo "Found certs (flat): $DOMAIN.crt and $DOMAIN.key"
         cp "$CERT_DIR/$DOMAIN.crt" /etc/apache2/ssl/server.crt
         cp "$CERT_DIR/$DOMAIN.key" /etc/apache2/ssl/server.key
@@ -61,7 +71,7 @@ for i in {1..18}; do
         chmod 600 /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
-    # Pattern 2: domain/fullchain.pem and domain/key.pem (nginx-proxy-companion standard)
+    # Pattern 3: domain/fullchain.pem and domain/key.pem (nginx-proxy-companion standard)
     elif [ -f "$CERT_DIR/$DOMAIN/fullchain.pem" ] && [ -f "$CERT_DIR/$DOMAIN/key.pem" ]; then
         echo "Found certs (folder): $DOMAIN/fullchain.pem and key.pem"
         cp "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt
@@ -70,7 +80,7 @@ for i in {1..18}; do
         chmod 600 /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
-    # Pattern 3: domain/cert.pem and domain/key.pem
+    # Pattern 4: domain/cert.pem and domain/key.pem
     elif [ -f "$CERT_DIR/$DOMAIN/cert.pem" ] && [ -f "$CERT_DIR/$DOMAIN/key.pem" ]; then
         echo "Found certs (folder): $DOMAIN/cert.pem and key.pem"
         cp "$CERT_DIR/$DOMAIN/cert.pem" /etc/apache2/ssl/server.crt
@@ -79,7 +89,7 @@ for i in {1..18}; do
         chmod 600 /etc/apache2/ssl/server.key
         CERT_FOUND=true
         break
-    # Pattern 4: domain/privkey.pem (some setups use this name)
+    # Pattern 5: domain/privkey.pem (some setups use this name)
     elif [ -f "$CERT_DIR/$DOMAIN/fullchain.pem" ] && [ -f "$CERT_DIR/$DOMAIN/privkey.pem" ]; then
         echo "Found certs (folder): $DOMAIN/fullchain.pem and privkey.pem"
         cp "$CERT_DIR/$DOMAIN/fullchain.pem" /etc/apache2/ssl/server.crt

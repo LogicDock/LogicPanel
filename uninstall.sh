@@ -103,7 +103,12 @@ fi
 log_info "Cleaning up Docker networks..."
 docker network rm logicpanel_internal 2>/dev/null || true
 
-# --- 5. Clean up Docker ---
+# --- 5. Remove Cron Jobs ---
+log_info "Removing LogicPanel cron jobs..."
+crontab -l 2>/dev/null | grep -v "fix-ssl.sh" | crontab - 2>/dev/null || true
+log_success "Cron jobs removed."
+
+# --- 6. Clean up Docker ---
 read -p "Do you want to remove unused Docker images and volumes? (y/N): " CLEANUP_CONFIRM < /dev/tty
 if [[ "$CLEANUP_CONFIRM" =~ ^[Yy]$ ]]; then
     log_info "Cleaning Docker system..."
